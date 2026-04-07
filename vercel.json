@@ -1,0 +1,40 @@
+{
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/node",
+      "config": {
+        "serverless": false
+      }
+    },
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python",
+      "config": {
+        "pythonVersion": "3.11"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/app.py"
+    },
+    {
+      "src": "/images/(.*)",
+      "dest": "/frontend/public/images/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/dist/$1"
+    }
+  ],
+  "env": {
+    "DB_HOST": "@db_host",
+    "DB_PORT": "@db_port",
+    "DB_NAME": "@db_name",
+    "DB_USER": "@db_user",
+    "DB_PASSWORD": "@db_password",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
+  }
+}
