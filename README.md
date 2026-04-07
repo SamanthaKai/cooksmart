@@ -26,7 +26,7 @@ A modern, AI-powered recipe discovery app featuring authentic African and intern
 
 ### Deployment
 - **Vercel** (Frontend)
-- **Railway** (Backend + Database)
+- **Render** (Backend + Database)
 
 ## 🚀 Quick Start
 

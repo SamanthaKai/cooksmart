@@ -1,10 +1,10 @@
 # CookSmart Deployment Guide
 
-## 🚀 Deploy to GitHub, Vercel & Railway
+## 🚀 Deploy to GitHub, Vercel & Render
 
 ### Option 1: Separate Deployments (Recommended)
 - **Frontend**: Vercel
-- **Backend + Database**: Railway
+- **Backend + Database**: Render
 - **Best for**: Clear separation, optimal performance
 
 ### Option 2: Full Stack on Vercel
@@ -16,7 +16,7 @@
 ## 📌 Prerequisites
 - GitHub account (https://github.com)
 - Vercel account (https://vercel.com)
-- Railway account (https://railway.app)
+- Render account (https://render.com)
 - Anthropic API key (for Claude AI suggestions)
 
 ---
@@ -49,61 +49,68 @@ git push -u origin main
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 5. Add Environment Variables:
-   - `VITE_API_URL`: Leave blank for now (set after Railway deployment)
+   - `VITE_API_URL`: Leave blank for now (set after Render deployment)
 6. Click "Deploy"
 
 Your frontend will be live at: `https://cooksmart.vercel.app` (or custom domain)
 
 ---
 
-## 🚂 Step 3: Deploy Backend to Railway
+## 🚂 Step 3: Deploy Backend to Render
 
-### 3a. Create Railway Project
+### 3a. Create a Render Project
 
-1. Go to https://railway.app/new
-2. Click "Deploy from GitHub repo"
-3. Select your `cooksmart` repository
-4. **Don't start deployment yet**
+1. Go to https://render.com
+2. Click "New" → "Web Service"
+3. Connect your GitHub account and select the `cooksmart` repository
+4. Choose branch: `main`
 
 ### 3b. Add PostgreSQL Database
 
-1. In Railway dashboard, click "Add Service" → "Add from marketplace"
-2. Select "PostgreSQL"
-3. Connect it to your project
-4. Note the database credentials
+1. Go to https://render.com
+2. Click "New" → "Database"
+3. Choose PostgreSQL
+4. Name it `cooksmart-db`
+5. Select the free plan
+6. Create the database and note the credentials
 
 ### 3c. Configure Backend Service
 
-1. In your Railway project, click "backend" service
-2. Go to Settings → Environment
-3. Add variables per Railway's suggestion OR manually add:
+1. In Render, open your backend service
+2. Set the environment to **Docker**
+3. Use `backend/Dockerfile`
+4. Set the start command:
+   ```bash
+   python app.py
    ```
-   DB_HOST=<railway_provided_host>
-   DB_PORT=<railway_provided_port>
-   DB_NAME=<database_name>
-   DB_USER=postgres
-   DB_PASSWORD=<railway_provided_password>
+5. Add these environment variables:
+   ```
+   DB_HOST=<render_db_host>
+   DB_PORT=<render_db_port>
+   DB_NAME=<render_db_name>
+   DB_USER=<render_db_user>
+   DB_PASSWORD=<render_db_password>
    ANTHROPIC_API_KEY=<your_anthropic_key>
    FLASK_ENV=production
    ```
-4. Go to Deployments → Deploy
+6. Save and deploy the service
 
 ### 3d. Get Backend URL
 
-1. In Railway, click the backend service
-2. Copy the Public Domain URL (e.g., `https://cooksmart-backend.railway.app`)
+1. In Render, open your backend service
+2. Copy the public service URL (e.g. `https://cooksmart-backend.onrender.com`)
 3. Save this for the next step
 
 ### 3e. Seed Production Database
 
-Use Railway's CLI or SSH to run:
+Use Render's shell or connect from your local machine with the Render database credentials:
 ```bash
 python backend/seed.py
 ```
 
 Or use `psql` if connected:
 ```bash
-psql -h <railway_host> -U postgres -d <db_name>
+psql -h <render_db_host> -U <render_db_user> -d <render_db_name>
 # Then run seed.py contents
 ```
 
@@ -116,7 +123,7 @@ psql -h <railway_host> -U postgres -d <db_name>
 3. Go to **Settings** → **Environment Variables**
 4. Add a new variable:
    - **Name**: `VITE_API_URL`
-   - **Value**: `https://your-railway-backend-url` (from Step 3d)
+   - **Value**: `https://your-render-backend-url` (from Step 3d)
    - **Environments**: Select all
 5. Click "Add"
 6. Go to **Deployments** → Click the latest deployment
@@ -136,16 +143,16 @@ psql -h <railway_host> -U postgres -d <db_name>
 - **Contains**: Backend, data, node_modules, etc.
 
 ### `backend/Dockerfile`
-- **Purpose**: Containerization for Railway deployment
+- **Purpose**: Containerization for Render deployment
 - **Contains**: Python environment setup, dependencies, Flask app
 
 ### `backend/Procfile`
-- **Purpose**: Alternative to Dockerfile (Railway will use Dockerfile if both exist)
+- **Purpose**: Optional start command for Render if using buildpacks
 - **Contains**: Command to start the Flask app
 
-### `backend/railway.json`
-- **Purpose**: Railroad-specific deployment configuration
-- **Contains**: Restart policies and build settings
+### `render.yaml`
+- **Purpose**: Render service configuration
+- **Contains**: backend web service and database definitions
 
 ---
 
@@ -153,7 +160,7 @@ psql -h <railway_host> -U postgres -d <db_name>
 
 ```
 Frontend:  https://cooksmart.vercel.app
-Backend:   https://cooksmart-backend.railway.app
+Backend:   https://cooksmart-backend.onrender.com
 GitHub:    https://github.com/YOUR_USERNAME/cooksmart
 ```
 
@@ -163,16 +170,16 @@ GitHub:    https://github.com/YOUR_USERNAME/cooksmart
 
 ### Frontend (`VITE_*` variables)
 ```
-VITE_API_URL=https://your-railway-backend-url
+VITE_API_URL=https://your-render-backend-url
 ```
 
 ### Backend (PostgreSQL + Claude)
 ```
-DB_HOST=your_railway_db_host
+DB_HOST=your_render_db_host
 DB_PORT=5432
-DB_NAME=railway
+DB_NAME=your_render_db_name
 DB_USER=postgres
-DB_PASSWORD=your_railway_password
+DB_PASSWORD=your_render_db_password
 ANTHROPIC_API_KEY=sk-ant-v7-...
 FLASK_ENV=production
 ```
@@ -183,8 +190,8 @@ FLASK_ENV=production
 
 - [ ] Repository pushed to GitHub
 - [ ] Frontend deployed to Vercel
-- [ ] Backend deployed to Railway
-- [ ] PostgreSQL database created on Railway
+- [ ] Backend deployed to Render
+- [ ] PostgreSQL database created on Render
 - [ ] `seed.py` executed to load 90 recipes
 - [ ] `VITE_API_URL` set in Vercel
 - [ ] Frontend redeployed after env vars added
@@ -198,7 +205,7 @@ FLASK_ENV=production
 
 ### Frontend shows "Cannot reach API"
 - ✅ Check `VITE_API_URL` in Vercel env vars
-- ✅ Verify Railway backend is running
+- ✅ Verify Render backend is running
 - ✅ Check CORS headers in backend
 
 ### Images not loading
@@ -207,7 +214,7 @@ FLASK_ENV=production
 - ✅ Ensure image naming matches database recipe IDs
 
 ### Database connection error
-- ✅ Verify credentials in Railway env vars
+- ✅ Verify credentials in Render env vars
 - ✅ Check database is created and running
 - ✅ Run `python backend/seed.py` to populate data
 
@@ -221,7 +228,7 @@ FLASK_ENV=production
 ## 📚 Additional Resources
 
 - [Vercel Documentation](https://vercel.com/docs)
-- [Railway Documentation](https://docs.railway.app)
+- [Render Documentation](https://render.com/docs)
 - [Flask Deployment Guide](https://flask.palletsprojects.com/deployment/)
 - [Vite Deployment Guide](https://vitejs.dev/guide/static-deploy.html)
 

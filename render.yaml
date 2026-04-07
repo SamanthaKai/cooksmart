@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: cooksmart-backend
+    env: docker
+    plan: free
+    repo: https://github.com/SamanthaKai/cooksmart
+    branch: main
+    dockerfilePath: backend/Dockerfile
+    buildCommand: ''
+    startCommand: python app.py
+
+databases:
+  - name: cooksmart-db
+    plan: free
+    engine: postgres
+    version: 15
