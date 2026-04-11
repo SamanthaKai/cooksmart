@@ -1,6 +1,6 @@
 """
 CookSmart — PostgreSQL connection pool
-All routes import get_conn() from here.
+Uses DATABASE_URL if available (Railway), otherwise falls back to individual DB_* vars.
 """
 
 import os
@@ -16,15 +16,23 @@ _pool = None
 def get_db_pool():
     global _pool
     if _pool is None:
-        _pool = psycopg2.pool.SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            host=os.getenv('DB_HOST', 'localhost'),
-            port=int(os.getenv('DB_PORT', 5432)),
-            dbname=os.getenv('DB_NAME', 'cooksmart'),
-            user=os.getenv('DB_USER', 'postgres'),
-            password=os.getenv('DB_PASSWORD', ''),
-        )
+        database_url = os.getenv('DATABASE_URL')
+        if database_url:
+            _pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                dsn=database_url,
+            )
+        else:
+            _pool = psycopg2.pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                host=os.getenv('DB_HOST', 'localhost'),
+                port=int(os.getenv('DB_PORT', 5432)),
+                dbname=os.getenv('DB_NAME', 'cooksmart'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD', ''),
+            )
     return _pool
 
 def get_conn():
