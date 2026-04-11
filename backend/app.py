@@ -1,6 +1,5 @@
 """
 CookSmart Flask API — Entry Point
-Run: python app.py
 """
 
 import os
@@ -13,12 +12,8 @@ from routes.ai_suggest import ai_bp
 
 app = Flask(__name__)
 
-# Allow both local dev and production Vercel URL
-CORS(app, origins=[
-    "http://localhost:3000",
-    "https://*.vercel.app",
-    os.getenv("FRONTEND_URL", ""),
-])
+# Allow ALL origins in production — we'll lock this down later
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialise DB connection pool on startup
 get_db_pool()
