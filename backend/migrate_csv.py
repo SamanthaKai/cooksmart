@@ -1,16 +1,9 @@
 """
 CookSmart — Railway Production Migration Script
-Run this ONCE after Railway deploys to seed the live database.
-
-Usage:
-  1. Get DATABASE_URL from Railway dashboard (PostgreSQL service → Connect)
-  2. Add to your .env: DATABASE_URL=postgresql://...
-  3. Run: python migrate_csv.py
 """
 
 import os
 import csv
-import re
 import sys
 import psycopg2
 from psycopg2.extras import execute_values
@@ -18,14 +11,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Config ────────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     print("❌  DATABASE_URL not set in .env")
-    print("    Get it from Railway: PostgreSQL service → Connect → copy URL")
     sys.exit(1)
 
-# Path to your CSV — works locally pointing at Railway DB
 CSV_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'CookSmart.csv')
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), 'db', 'schema.sql')
 
@@ -49,7 +39,6 @@ INGREDIENT_CATEGORIES = {
     'coriander':'spice','thyme':'spice','cumin':'spice',
     'water':'liquid','oil':'liquid','stock':'liquid','broth':'liquid','wine':'liquid',
 }
-
 
 def clean(val):
     if val is None: return None
@@ -82,7 +71,6 @@ def build_tags(row):
 def migrate():
     print("🚀  CookSmart production migration starting...")
 
-    # Check CSV exists
     if not os.path.exists(CSV_PATH):
         print(f"❌  CSV not found: {CSV_PATH}")
         sys.exit(1)
@@ -91,7 +79,6 @@ def migrate():
         rows = list(csv.DictReader(f))
     print(f"📄  Loaded {len(rows)} recipes")
 
-    # Connect to Railway
     try:
         conn = psycopg2.connect(DATABASE_URL)
         conn.autocommit = False
@@ -106,6 +93,11 @@ def migrate():
         with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
             cur.execute(f.read())
         print("📋  Schema applied")
+
+        # Fix column types to TEXT so no length issues ever
+        cur.execute("ALTER TABLE recipe_ingredients ALTER COLUMN quantity TYPE TEXT;")
+        cur.execute("ALTER TABLE recipe_ingredients ALTER COLUMN unit TYPE TEXT;")
+        print("🔧  Column types fixed")
 
         # Clear existing data
         cur.execute("TRUNCATE recipes, ingredients, recipe_ingredients, tags RESTART IDENTITY CASCADE;")
@@ -129,7 +121,6 @@ def migrate():
         recipe_rows = []
         for idx, row in enumerate(rows, start=1):
             name = clean(row.get('name'))
-            # Image URL — local path matching your image naming convention
             image_url = f"/images/id_{idx} {name}.jpg" if name else None
             recipe_rows.append((
                 name,
@@ -158,7 +149,7 @@ def migrate():
         inserted_ids = [r[0] for r in cur.fetchall()]
         print(f"🍲  {len(inserted_ids)} recipes")
 
-        # Recipe ingredients
+        # Recipe ingredients — store full ingredient string as quantity
         ri_rows = []
         for db_id, row in zip(inserted_ids, rows):
             names = pipe_list(row.get('ingredient_names',''))
@@ -186,12 +177,9 @@ def migrate():
         conn.commit()
         print("\n✅  Migration complete! CookSmart is live.")
 
-        cur.execute("SELECT * FROM recipe_stats;")
-        cols = [d[0] for d in cur.description]
-        stats = dict(zip(cols, cur.fetchone()))
-        print("\n📊  Live database stats:")
-        for k, v in stats.items():
-            print(f"     {k:<25} {v}")
+        cur.execute("SELECT COUNT(*) as total FROM recipes;")
+        count = cur.fetchone()[0]
+        print(f"\n📊  Recipes in live database: {count}")
 
     except Exception as e:
         conn.rollback()

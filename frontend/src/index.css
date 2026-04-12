@@ -231,8 +231,8 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   align-items: center;
   justify-content: space-between;
 }
-.ing-suggest-item:hover { background: var(--cream); }
-.ing-cat { font-size: .75rem; color: var(--stone); }
+.ing-suggest-item { color: var(--charcoal); }
+.ing-suggest-item span:first-child { color: var(--charcoal); }
 
 /* ── Search button ── */
 .search-btn {
