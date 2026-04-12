@@ -230,10 +230,10 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  color: var(--charcoal);
 }
-.ing-suggest-item { color: var(--charcoal); }
-.ing-suggest-item span:first-child { color: var(--charcoal); }
-
+.ing-suggest-item:hover { background: var(--cream); color: var(--charcoal); }
+.ing-cat { font-size: .75rem; color: var(--stone); }
 /* ── Search button ── */
 .search-btn {
   margin-top: 1rem;
