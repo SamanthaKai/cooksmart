@@ -160,12 +160,13 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 
 /* ── Ingredient pill input ── */
 .ing-wrap { max-width: 580px; margin: 0 auto; }
+/* Replace with: */
 .ing-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   background: var(--white);
-  border-radius: var(--radius);
+  border-radius: 99px;
   padding: .75rem 1rem;
   box-shadow: var(--shadow-lg);
   min-height: 52px;
