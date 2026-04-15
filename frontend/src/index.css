@@ -337,6 +337,19 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   overflow: hidden;
 }
 .card-img img { width:100%; height:100%; object-fit:cover; }
+.card-img-photo { width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .3s; }
+.card-img-photo.loaded { opacity:1; }
+.card-img-emoji { font-size: 3rem; }
+.card-img-skeleton {
+  position: absolute;
+  inset: 0;
+  background: var(--cream-dark);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
 .card-cuisine {
   position: absolute;
   top: 10px; left: 10px;

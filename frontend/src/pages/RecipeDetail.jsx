@@ -1,66 +1,44 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
+import { getRecipeImageUrl } from "../utils/imageHelper";
 
 // Split "200g lemon grass" into { qty: "200g", name: "lemon grass" }
 function parseIngredient(raw) {
   raw = raw.trim();
-  // Match leading quantity: number + optional unit
   const match = raw.match(/^([\d½¼¾./\s]+\s*(?:g|kg|ml|l|litre|liter|cup|cups|tbsp|tsp|tablespoon|teaspoon|bunch|bunches|pieces?|oz|lb|medium|large|small|handful|pinch|cloves?|slices?)?)\s+(.+)$/i);
-  if (match) {
-    return { qty: match[1].trim(), name: match[2].trim() };
-  }
-  // No quantity found — whole string is the name
+  if (match) return { qty: match[1].trim(), name: match[2].trim() };
   return { qty: null, name: raw };
 }
 
-function getImageSources(recipe) {
-  const cacheBuster = `?t=${Date.now()}-${Math.random()}`;
-  
-  // Use the standard name-based approach
-  const cleanName = recipe.name.trim();
-  const encodedName = encodeURIComponent(cleanName);
-  const hyphenName = cleanName.replace(/ /g, '-');
-  
-  return [
-    `/images/id_${recipe.id}%20${encodedName}.jpg${cacheBuster}`,
-    `/images/id_${recipe.id}%20${encodedName}.jpeg${cacheBuster}`,
-    `/images/id_${recipe.id}%20${encodedName}.png${cacheBuster}`,
-    `/images/id_${recipe.id}%20${encodedName}.webp${cacheBuster}`,
-    `/images/id_${recipe.id}-${hyphenName}.jpg${cacheBuster}`,
-    `/images/id_${recipe.id}.jpg${cacheBuster}`,
-    `/images/id_${recipe.id}.png${cacheBuster}`
-  ];
-}
-
+// Hero image: eager-loaded (above the fold), with graceful fallback
 function RecipeImage({ recipe, fallbackEmoji }) {
-  const sources = getImageSources(recipe);
-  
-  const [currentSrcIndex, setCurrentSrcIndex] = useState(0);
-  const [imgError, setImgError] = useState(false);
-  
-  const currentSrc = sources && sources[currentSrcIndex] ? sources[currentSrcIndex] : '';
-  
-  const handleError = () => {
-    if (currentSrcIndex + 1 < sources.length) {
-      setCurrentSrcIndex(currentSrcIndex + 1);
-    } else {
-      setImgError(true);
-    }
-  };
-  
-  if (imgError || !currentSrc) {
-    return <span>{fallbackEmoji}</span>;
-  }
-  
+  const sources = getRecipeImageUrl(recipe);
+  const [idx, setIdx]       = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  if (failed) return <span style={{ fontSize: "5rem" }}>{fallbackEmoji}</span>;
+
   return (
-    <img 
-      key={currentSrc}
-      src={currentSrc}
-      alt={recipe.name}
-      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      onError={handleError}
-    />
+    <>
+      {!loaded && (
+        <div style={{ width: "100%", height: "100%", background: "var(--cream-dark)", borderRadius: "var(--radius)" }} />
+      )}
+      <img
+        key={sources[idx]}
+        src={sources[idx]}
+        alt={recipe.name}
+        loading="eager"
+        decoding="async"
+        style={{ width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? 1 : 0, transition: "opacity .3s" }}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (idx + 1 < sources.length) setIdx(i => i + 1);
+          else setFailed(true);
+        }}
+      />
+    </>
   );
 }
 export default function RecipeDetail({ recipeId, onBack, onSelectRecipe }) {
