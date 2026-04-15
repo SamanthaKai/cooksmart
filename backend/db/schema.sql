@@ -45,6 +45,15 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
     UNIQUE (recipe_id, ingredient_id)
 );
 
+-- ── USERS ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL,
+    email         VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ── TAGS ──────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS tags (
     id        SERIAL PRIMARY KEY,

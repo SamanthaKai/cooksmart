@@ -85,7 +85,8 @@ def search_by_ingredients():
             'cook_time':       r['cook_time'],
             'servings':        r['servings'],
             'ingredient_list': r['ingredient_list'],
-            'match_count':     r['match_count'],
+            'match_count':     int(r['match_count']),
+            'requested_count': int(r['requested_count']),
             'is_exact_match':  r['match_count'] >= r['requested_count'],
         })
 

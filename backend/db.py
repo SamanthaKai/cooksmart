@@ -50,3 +50,20 @@ def query(sql, params=None, many=True):
             return cur.fetchall() if many else cur.fetchone()
     finally:
         release_conn(conn)
+
+def execute(sql, params=None):
+    """Run INSERT/UPDATE/DELETE/DDL. Returns the first row if RETURNING is used, else None."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, params or ())
+            conn.commit()
+            if cur.description:
+                row = cur.fetchone()
+                return dict(row) if row else None
+            return None
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        release_conn(conn)

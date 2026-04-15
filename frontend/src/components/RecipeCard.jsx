@@ -22,7 +22,7 @@ function getImageSources(recipe) {
   return sources;
 }
 
-export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCount }) {
+export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCount, requestedCount }) {
   console.log('RecipeCard received recipe:', recipe);
   const sources = getImageSources(recipe);
   console.log('Generated sources:', sources);
@@ -69,7 +69,9 @@ export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCoun
         )}
         {matchCount != null && (
           <p className="card-match" style={{ marginTop: ".5rem" }}>
-            {matchCount} ingredient{matchCount !== 1 ? "s" : ""} matched
+            {requestedCount != null
+              ? `${matchCount} of ${requestedCount} ingredients matched (${Math.round(matchCount / requestedCount * 100)}%)`
+              : `${matchCount} ingredient${matchCount !== 1 ? "s" : ""} matched`}
           </p>
         )}
         {aiReason && (
