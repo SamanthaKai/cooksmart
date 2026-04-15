@@ -1,101 +1,79 @@
-# CookSmart – Project Context Brief for Claude Code
+# CookSmart – Project Status
 
 ## What this project is
-**CookSmart** is a university graded project: an AI-powered recipe recommendation system focused on Ugandan cuisine. It is built by a student group at Mbarara University of Science and Technology.
+**CookSmart** is a university graded project: an AI-powered recipe recommendation system focused on Ugandan cuisine. Built by a student group at Mbarara University of Science and Technology (MUST).
+
+**Stack:** Flask 3 (backend) · React 18 + Vite (frontend) · PostgreSQL (Render) · Deployed on Vercel + Render
 
 ---
 
-## What was proposed (the original pitch)
-- A system for hotels/restaurants to standardize Ugandan recipes
-- Users (chefs/staff) search by available ingredients and get matching recipes
-- AI recommends the best ingredient combinations and cooking steps
-- Machine learning for personalized recommendations (content-based + collaborative filtering)
-- Computer vision to monitor portion sizes and presentation
-- Culturally-specific dataset of authentic Ugandan dishes
-- User accounts with saved preferences and dietary filters
+## Professor's requirements — status
 
----
-
-## What actually got built (current state)
-- A web app where users type in ingredients and get back a list of recipes that contain those ingredients
-- It is essentially a **search/filter**, not a recommendation engine
-- **No login/authentication**
-- **No AI or generative features** — pure keyword matching
-- **No algorithm** that scores, ranks, or personalizes results
-
----
-
-## Professor's feedback (must address these)
-1. **Add a login page** — users need to be able to sign up and log in
-2. **What is the algorithm?** — the system must have a visible, explainable AI/recommendation algorithm
-3. **Where is the AI?** — there must be a clear, demonstrable generative AI feature (not just search)
-
----
-
-## Features to add (priority order)
-
-### 1. Login / Sign-up page (HIGH PRIORITY)
-- Simple authentication: sign up with name, email, password; log in with email + password
-- Can use localStorage or a simple backend (SQLite/JSON file) — does not need to be production-secure
-- After login, user has a profile/session
-
-### 2. AI Recipe Generator — the core generative feature (HIGH PRIORITY)
-- User types in ingredients they have available
-- System calls the **Anthropic Claude API** (`claude-sonnet-4-20250514`) to generate a full recipe
-- The AI returns: dish name, ingredients with quantities, step-by-step cooking instructions, estimated cooking time, portion size
-- This must be clearly labeled in the UI as "AI-Generated Recipe"
-- The prompt to the API should specify Ugandan/East African cuisine context
-- API endpoint: `https://api.anthropic.com/v1/messages` — **no API key needed in frontend if proxied; check environment for ANTHROPIC_API_KEY**
-
-### 3. Ingredient Match Scoring — make the algorithm visible (MEDIUM PRIORITY)
-- When showing search results, display a match score: e.g., "5 of 7 ingredients matched (71%)"
-- Sort results by match percentage descending
-- This makes the recommendation logic visible and explainable to the professor
-
-### 4. Dietary/preference filters (LOWER PRIORITY, add if time allows)
-- Checkboxes: vegetarian, no nuts, quick meals (<30 min)
-- Filter recipe results based on these tags
-
----
-
-## Tech stack context
-- The existing app is a web app (assumed HTML/CSS/JS or a simple Python/Node backend — adapt to whatever stack already exists)
-- The Anthropic API call should go through a backend route to avoid exposing keys in frontend code
-- Use `claude-sonnet-4-20250514` model, `max_tokens: 1024`
-
----
-
-## Anthropic API call example (backend route)
-```javascript
-const response = await fetch("https://api.anthropic.com/v1/messages", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": process.env.ANTHROPIC_API_KEY,
-    "anthropic-version": "2023-06-01"
-  },
-  body: JSON.stringify({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: `You are a Ugandan cuisine expert. The user has these ingredients: ${ingredients}. 
-Generate a complete Ugandan or East African recipe using some or all of these ingredients. 
-Return: dish name, list of ingredients with quantities, step-by-step cooking instructions, cooking time, and serving size.`
-      }
-    ]
-  })
-});
-```
-
----
-
-## Summary of what the grader wants to see
-| Requirement | Status | Action |
+| Requirement | Status | Notes |
 |---|---|---|
-| Login page | ❌ Missing | Build sign up + login UI with session |
-| Visible AI algorithm | ❌ Missing | Add ingredient match % scoring |
-| Generative AI feature | ❌ Missing | Add AI recipe generator via Anthropic API |
-| Ingredient search | ✅ Exists | Keep, but improve with match scoring |
-| Ugandan cuisine focus | ⚠️ Partial | Ensure AI prompts specify Ugandan/East African context |
+| Login / Sign-up page | ✅ Done | Full auth with JWT-style tokens |
+| Visible AI algorithm | ✅ Done | Match score shown as "X of Y matched (Z%)" |
+| Generative AI feature | ✅ Done | "Generate with AI" mode, clearly labelled |
+| Ingredient search | ✅ Exists | Kept and improved with match scoring |
+| Ugandan cuisine focus | ✅ Done | All AI prompts specify Ugandan/East African context |
+
+---
+
+## What was built (current state)
+
+### Authentication
+- Sign up with name, email, password · Log in with email + password
+- Tokens signed with `itsdangerous` (werkzeug password hashing)
+- Token stored in `localStorage`, sent as `Authorization: Bearer <token>` on every API call
+- App is fully gated — login page shows before anything else
+- `users` table auto-created on first auth request (also in `schema.sql`)
+- **Files:** `backend/routes/auth.py`, `frontend/src/pages/LoginPage.jsx`, `frontend/src/App.jsx`
+
+### AI Recipe Generator (generative AI feature)
+- Third mode tab in the hero: **"✨ Generate with AI"**
+- User adds ingredient pills → clicks "Generate Recipe"
+- Backend calls the configured LLM with a Ugandan/East African cuisine prompt
+- Returns a brand-new recipe: dish name, local name, description, ingredients with quantities, step-by-step instructions, cooking time, servings, chef's tip
+- Result displayed in a styled full-width panel labelled **"AI-Generated Recipe"**
+- **Files:** `backend/routes/ai_suggest.py` (`/api/ai/generate`), `frontend/src/pages/Home.jsx`
+
+### Ingredient Match Scoring (visible algorithm)
+- Search results now show **"3 of 5 ingredients matched (60%)"** on every recipe card
+- Results sorted by match count descending (most matched first)
+- Exact matches and partial matches shown in separate sections
+- **Files:** `backend/routes/ingredients.py`, `frontend/src/components/RecipeCard.jsx`
+
+### LLM Provider (switchable — no paid API required)
+- Controlled by `LLM_PROVIDER` in `.env` — switch between `groq` or `ollama`
+- Uses `httpx` (already a project dependency) — no new packages needed
+- **Groq** (default): free cloud inference at `console.groq.com`
+- **Ollama**: fully local/offline inference
+- **File:** `backend/routes/ai_suggest.py` (`call_llm()` helper), `backend/.env`
+
+### Also fixed
+- `POST /api/ai/suggest` was declared but never implemented — now works
+- Login page uses `background.jpg` with a dark gradient overlay
+
+---
+
+## Environment variables (`backend/.env`)
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SECRET_KEY` | Signs auth tokens (change in production) |
+| `LLM_PROVIDER` | `groq` or `ollama` |
+| `GROQ_API_KEY` | Free API key from console.groq.com |
+| `GROQ_MODEL` | Default: `llama-3.1-8b-instant` |
+| `OLLAMA_BASE_URL` | Default: `http://localhost:11434` |
+| `OLLAMA_MODEL` | Default: `gemma3:1b` |
+
+---
+
+## Pending / not yet done
+
+| Item | Priority | Notes |
+|---|---|---|
+| Dietary/preference filters | Low | Vegetarian, no nuts, quick meals (<30 min) checkboxes |
+| Deploy updated backend to Render | — | Push changes and redeploy; ensure env vars are set on Render |
+| Set `SECRET_KEY` to a real secret in production | — | Currently using a dev default |
