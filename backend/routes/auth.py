@@ -7,10 +7,13 @@ GET  /api/auth/me          Authorization: Bearer <token> → { user }
 """
 
 import os
+import re
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from db import query, execute
+
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -63,6 +66,8 @@ def register():
 
     if not name or not email or not password:
         return jsonify({'error': 'Name, email and password are required.'}), 400
+    if not _EMAIL_RE.match(email):
+        return jsonify({'error': 'Please enter a valid email address.'}), 400
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters.'}), 400
 

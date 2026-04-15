@@ -4,7 +4,7 @@ import RecipeCard from "../components/RecipeCard";
 
 const COURSES = ["main","soup","side","sauce","beverage","breakfast","snack","seasoning"];
 
-export default function Home({ onSelectRecipe, user, onLogout }) {
+export default function Home({ onSelectRecipe, user, onLogout, onProfile }) {
   const [mode, setMode]               = useState("name");      // "name" | "ingredients" | "generate"
   const [query, setQuery]             = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -205,7 +205,7 @@ export default function Home({ onSelectRecipe, user, onLogout }) {
   };
 
   // ── Ingredient pill input (shared between ingredients + generate modes) ────
-  const PillInput = ({ hint, minPills = 2 }) => (
+  const PillInput = ({ hint }) => (
     <div className="ing-wrap" ref={ingRef}>
       <div className="ing-pills">
         {pills.map(p => (
@@ -250,6 +250,7 @@ export default function Home({ onSelectRecipe, user, onLogout }) {
           {user && (
             <div className="navbar-user">
               <span className="navbar-user-name">Hi, {user.name.split(" ")[0]}</span>
+              <button className="navbar-profile-btn" onClick={onProfile}>My Profile</button>
               <button className="navbar-logout" onClick={onLogout}>Sign out</button>
             </div>
           )}

@@ -1,0 +1,101 @@
+3. SYSTEM CHECKLIST (FOR CLAUDE / BUILDING)
+
+This is your execution checklist 👇
+
+🔐 Authentication
+ User registration ✅
+ Login system ✅
+ Password hashing✅
+ Session management✅
+
+👤 User Data
+ Store user preferences
+ Store allergies
+ Store dietary restrictions
+ Update profile
+
+images from unplash, the images on the website are lagging to load. and the system lags after a while.
+
+📊 Recipe System
+ Recipe database (PostgreSQL)
+ Structured ingredients
+ Categories (breakfast/lunch/etc.)
+ Cooking steps
+
+🔍 Search & Filtering
+ Search by ingredients
+ Search by recipe name
+ Filter by category
+ Filter by time/diet
+
+🤖 AI Recommendation Engine
+ Content-based filtering algorithm
+ Ingredient matching logic
+ Basic ranking system
+
+🧠 NLP Processing
+ Handle natural language queries
+ Extract ingredients from text
+
+✨ Generative AI (KEY FEATURE)
+ Recipe suggestions (text generation)
+ Ingredient substitutions
+ Cooking tips generation
+ API integration (Groq)
+
+❤️ User Interaction
+ Save recipes
+ Like/favorite recipes
+ Track user history
+🥗 Health Features
+ Display nutritional info
+ Show health benefits
+
+🔗 Backend
+ Flask API endpoints
+ Connect frontend to backend
+ Connect backend to database
+ Connect backend to AI API
+
+✨ GROQ AI FEATURES (NEW — CLEARLY SEPARATED)
+AI pipeline 
+Step 1: User enters ingredients as text
+Step 2: Flask parses text (basic tokenization)
+Step 3: Content-based filtering matches ingredients to database
+Step 4: Groq API enhances recipe if needed
+Step 5: Return standardized recipe with measurements
+
+🧾 Recipe Standardization (PRIMARY USE)
+ Convert vague recipes → structured format
+ Add exact measurements (e.g. grams, minutes)
+ Improve step-by-step clarity
+
+🔄 Ingredient Substitution
+ Suggest local alternatives
+ Maintain taste similarity
+ Handle unavailable ingredients
+
+💬 Smart Response Generation
+ Generate natural language recipe suggestions
+ Explain cooking steps when needed
+ Answer user cooking questions
+
+🥗 Health Insights (AI-Generated)
+ Generate health benefits of recipes
+ Explain nutritional value in simple terms
+
+✍️ Recipe Enhancement
+ Improve poorly written recipes
+ Rewrite instructions for clarity
+ Ensure consistency in format
+
+❤️ User Interaction
+ Save recipes
+ Like/favorite recipes
+ Track user activity
+
+🔗 Backend Integration
+ Flask API endpoints
+ Connect frontend ↔ backend
+ Connect backend ↔ database
+ Integrate Groq API for AI features
