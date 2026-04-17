@@ -1,4 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+// Health goal options for recipe customisation
+const HEALTH_GOALS = [
+  { value: "low-carb",           label: "Low Carb" },
+  { value: "high-protein",       label: "High Protein" },
+  { value: "low-fat",            label: "Low Fat" },
+  { value: "low-sodium",         label: "Low Sodium" },
+  { value: "diabetic-friendly",  label: "Diabetic-Friendly" },
+  { value: "vegan",              label: "Vegan / Plant-Based" },
+  { value: "reduce-calories",    label: "Reduce Calories" },
+  { value: "gluten-free",        label: "Gluten-Free" },
+];
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
 import { getRecipeImageUrl } from "../utils/imageHelper";
@@ -41,19 +53,127 @@ function RecipeImage({ recipe, fallbackEmoji }) {
     </>
   );
 }
-export default function RecipeDetail({ recipeId, onBack, onSelectRecipe }) {
+export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin }) {
   const [recipe, setRecipe]           = useState(null);
   const [recos,  setRecos]            = useState([]);
   const [loading, setLoading]         = useState(true);
   const [recoLoading, setRecoLoading] = useState(false);
 
+  // ── AI features ──────────────────────────────────────────────────────────
+  const [showSubs, setShowSubs]         = useState(false);
+  const [activeSubIng, setActiveSubIng] = useState(null);
+  const [subResults, setSubResults]     = useState(null);
+  const [subLoading, setSubLoading]     = useState(false);
+  const [subError, setSubError]         = useState("");
+
+  const [tips, setTips]             = useState(null);
+  const [tipsLoading, setTipsLoading] = useState(false);
+  const [tipsError, setTipsError]   = useState("");
+
+  const [health, setHealth]             = useState(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthError, setHealthError]   = useState("");
+
+  // ── Enhancement ──────────────────────────────────────────────────────────
+  const [enhanced, setEnhanced]           = useState(null);
+  const [enhanceLoading, setEnhanceLoading] = useState(false);
+  const [enhanceError, setEnhanceError]   = useState("");
+
+  // ── Customisation ─────────────────────────────────────────────────────────
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [custGoals, setCustGoals]         = useState([]);
+  const [custNotes, setCustNotes]         = useState("");
+  const [customized, setCustomized]       = useState(null);
+  const [custLoading, setCustLoading]     = useState(false);
+  const [custError, setCustError]         = useState("");
+
+  async function loadSubstitutes(ingName) {
+    setActiveSubIng(ingName);
+    setSubResults(null);
+    setSubError("");
+    setSubLoading(true);
+    try {
+      const data = await api.aiSubstitutes(recipeId, ingName);
+      setSubResults(data.substitutes || []);
+    } catch (e) {
+      setSubError(e.message);
+    } finally {
+      setSubLoading(false);
+    }
+  }
+
+  async function loadTips() {
+    setTipsLoading(true); setTipsError("");
+    try {
+      const data = await api.aiTips(recipeId);
+      setTips(data.tips || []);
+    } catch (e) {
+      setTipsError(e.message);
+    } finally {
+      setTipsLoading(false);
+    }
+  }
+
+  async function loadEnhancement() {
+    setEnhanceLoading(true); setEnhanceError("");
+    try {
+      const data = await api.aiEnhance(recipeId);
+      setEnhanced(data.enhanced || null);
+    } catch (e) {
+      setEnhanceError(e.message);
+    } finally {
+      setEnhanceLoading(false);
+    }
+  }
+
+  const toggleGoal = useCallback((val) => {
+    setCustGoals(prev =>
+      prev.includes(val) ? prev.filter(g => g !== val) : [...prev, val]
+    );
+  }, []);
+
+  async function loadCustomization() {
+    if (!custGoals.length && !custNotes.trim()) {
+      setCustError("Please select at least one health goal."); return;
+    }
+    setCustLoading(true); setCustError(""); setCustomized(null);
+    try {
+      const data = await api.aiCustomize(recipeId, custGoals, custNotes);
+      setCustomized(data.customized || null);
+    } catch (e) {
+      setCustError(e.message);
+    } finally {
+      setCustLoading(false);
+    }
+  }
+
+  async function loadHealth() {
+    setHealthLoading(true); setHealthError("");
+    try {
+      const data = await api.aiHealth(recipeId);
+      setHealth(data.health || null);
+    } catch (e) {
+      setHealthError(e.message);
+    } finally {
+      setHealthLoading(false);
+    }
+  }
+
   useEffect(() => {
     setLoading(true);
     setRecos([]);
+    // reset AI panels when recipe changes
+    setShowSubs(false); setActiveSubIng(null); setSubResults(null); setSubError("");
+    setTips(null); setTipsError("");
+    setHealth(null); setHealthError("");
+    setEnhanced(null); setEnhanceError("");
+    setShowCustomize(false); setCustGoals([]); setCustNotes(""); setCustomized(null); setCustError("");
     api.recipe(recipeId)
       .then(data => {
         setRecipe(data);
         setLoading(false);
+        // Record view silently (no-op for guests on the server)
+        api.interactionView(recipeId).catch(() => {});
         setRecoLoading(true);
         api.aiRecommend(recipeId)
           .then(r => setRecos(r.recommendations || []))
@@ -133,7 +253,36 @@ const steps = (recipe.instructions || "")
 
         {/* Header */}
         <div className="detail-header">
-          <h1 className="detail-title">{recipe.name}</h1>
+          <div className="detail-title-row">
+            <h1 className="detail-title">{recipe.name}</h1>
+            {/* Save & Like actions */}
+            <div className="detail-actions">
+              <button
+                className={`detail-action-btn${savedIds?.has(recipe.id) ? " active-save" : ""}`}
+                onClick={() => onToggleSave ? onToggleSave(recipe.id) : onRequestLogin?.()}
+                title={savedIds?.has(recipe.id) ? "Saved" : "Save recipe"}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24"
+                  fill={savedIds?.has(recipe.id) ? "currentColor" : "none"}
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>{savedIds?.has(recipe.id) ? "Saved" : "Save"}</span>
+              </button>
+              <button
+                className={`detail-action-btn${likedIds?.has(recipe.id) ? " active-like" : ""}`}
+                onClick={() => onToggleLike ? onToggleLike(recipe.id) : onRequestLogin?.()}
+                title={likedIds?.has(recipe.id) ? "Liked" : "Like recipe"}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24"
+                  fill={likedIds?.has(recipe.id) ? "currentColor" : "none"}
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>{likedIds?.has(recipe.id) ? "Liked" : "Like"}</span>
+              </button>
+            </div>
+          </div>
           {recipe.local_name && recipe.local_name !== recipe.name && (
             <p className="detail-local">{recipe.local_name}</p>
           )}
@@ -192,6 +341,55 @@ const steps = (recipe.instructions || "")
                 <strong>Alternative method:</strong><br />{recipe.alternative_cooking}
               </div>
             )}
+
+            {/* ── Ingredient substitutions ── */}
+            {ingredients.length > 0 && (
+              <div className="ai-panel">
+                {!showSubs ? (
+                  <button className="ai-feature-btn" onClick={() => setShowSubs(true)}>
+                    🔄 Can't find an ingredient?
+                  </button>
+                ) : (
+                  <>
+                    <p className="ai-panel-label">Tap an ingredient to get substitutes:</p>
+                    <div className="sub-chips">
+                      {ingredients.map((ing, i) => (
+                        <button
+                          key={i}
+                          className={`sub-chip${activeSubIng === ing.name ? " active" : ""}`}
+                          onClick={() => loadSubstitutes(ing.name)}
+                        >
+                          {ing.name}
+                        </button>
+                      ))}
+                    </div>
+                    {subLoading && (
+                      <div className="ai-inline-loading">
+                        <div className="spinner" style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }} />
+                        Finding substitutes…
+                      </div>
+                    )}
+                    {subError && <p className="ai-error">{subError}</p>}
+                    {subResults && (
+                      <div className="sub-results">
+                        <p className="sub-results-title">
+                          Substitutes for <strong>{activeSubIng}</strong>:
+                        </p>
+                        {subResults.map((s, i) => (
+                          <div key={i} className="sub-item">
+                            <span className="sub-name">{s.name}</span>
+                            <span className="sub-reason">{s.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button className="ai-dismiss" onClick={() => { setShowSubs(false); setSubResults(null); setActiveSubIng(null); }}>
+                      Hide
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Instructions */}
@@ -206,7 +404,235 @@ const steps = (recipe.instructions || "")
                 {recipe.instructions || "No instructions available."}
               </p>
             )}
+
+            {/* ── Cooking tips ── */}
+            <div className="ai-panel" style={{ marginTop: "1.25rem" }}>
+              {!tips && !tipsLoading && (
+                <button className="ai-feature-btn" onClick={loadTips}>
+                  💡 Get cooking tips
+                </button>
+              )}
+              {tipsLoading && (
+                <div className="ai-inline-loading">
+                  <div className="spinner" style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }} />
+                  Generating tips…
+                </div>
+              )}
+              {tipsError && <p className="ai-error">{tipsError}</p>}
+              {tips && (
+                <>
+                  <div className="tips-header">
+                    <span className="ai-badge">CookSmart AI</span>
+                    <strong>Cooking tips</strong>
+                  </div>
+                  <ul className="tips-list">
+                    {tips.map((t, i) => <li key={i}>{t}</li>)}
+                  </ul>
+                  <button className="ai-dismiss" onClick={() => setTips(null)}>Hide tips</button>
+                </>
+              )}
+            </div>
+
+            {/* ── Recipe Enhancement ── */}
+            <div className="ai-panel" style={{ marginTop: "1rem" }}>
+              {!enhanced && !enhanceLoading && (
+                <button className="ai-feature-btn" onClick={loadEnhancement}>
+                  ✨ Enhance this recipe
+                </button>
+              )}
+              {enhanceLoading && (
+                <div className="ai-inline-loading">
+                  <div className="spinner" style={{ width: 18, height: 18, margin: 0, borderWidth: 2 }} />
+                  Rewriting for clarity…
+                </div>
+              )}
+              {enhanceError && <p className="ai-error">{enhanceError}</p>}
+              {enhanced && (
+                <>
+                  <div className="tips-header">
+                    <span className="ai-badge">CookSmart AI</span>
+                    <strong>Enhanced Instructions</strong>
+                  </div>
+                  <ol className="steps-list" style={{ marginTop: ".5rem" }}>
+                    {(enhanced.steps || []).map((s, i) => <li key={i}>{s}</li>)}
+                  </ol>
+                  {enhanced.prep_tip && (
+                    <div className="health-tip" style={{ marginTop: ".75rem" }}>
+                      <strong>Prep tip:</strong> {enhanced.prep_tip}
+                    </div>
+                  )}
+                  {enhanced.serving && (
+                    <div className="health-tip" style={{ marginTop: ".5rem", background: "#e8f4fd", borderColor: "#bee3f8" }}>
+                      <strong>Serving:</strong> {enhanced.serving}
+                    </div>
+                  )}
+                  <button className="ai-dismiss" onClick={() => setEnhanced(null)}>Hide</button>
+                </>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* ── Health & Nutrition ── */}
+        <div className="health-section">
+          {!health && !healthLoading && (
+            <button className="ai-feature-btn health-btn" onClick={loadHealth}>
+              🥗 Health &amp; Nutrition insights
+            </button>
+          )}
+          {healthLoading && (
+            <div className="ai-inline-loading">
+              <div className="spinner" style={{ width: 20, height: 20, margin: 0, borderWidth: 2 }} />
+              Analysing nutrition…
+            </div>
+          )}
+          {healthError && <p className="ai-error">{healthError}</p>}
+          {health && (
+            <div className="health-card">
+              <div className="health-card-header">
+                <span className="ai-badge">CookSmart AI</span>
+                <h3>Health &amp; Nutrition</h3>
+              </div>
+              {health.summary && <p className="health-summary">{health.summary}</p>}
+              {health.benefits?.length > 0 && (
+                <ul className="health-benefits">
+                  {health.benefits.map((b, i) => (
+                    <li key={i}>
+                      <span className="health-nutrient">{b.nutrient}</span>
+                      <span className="health-benefit-text">{b.benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {health.tip && (
+                <div className="health-tip">
+                  <strong>Tip:</strong> {health.tip}
+                </div>
+              )}
+              <button className="ai-dismiss" onClick={() => setHealth(null)}>Hide</button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Recipe Customisation ── */}
+        <div className="customize-section">
+          {!showCustomize && !customized && (
+            <button className="ai-feature-btn customize-btn" onClick={() => setShowCustomize(true)}>
+              🥗 Customise for my diet
+            </button>
+          )}
+
+          {(showCustomize || customized) && (
+            <div className="customize-card">
+              <div className="health-card-header">
+                <span className="ai-badge">CookSmart AI</span>
+                <h3>Customise this Recipe</h3>
+              </div>
+
+              {!customized && (
+                <>
+                  <p className="customize-desc">
+                    Select your health goals and we'll suggest smart ingredient swaps to make this dish work for you.
+                  </p>
+                  <div className="goal-chips">
+                    {HEALTH_GOALS.map(g => (
+                      <button
+                        key={g.value}
+                        className={`goal-chip${custGoals.includes(g.value) ? " active" : ""}`}
+                        onClick={() => toggleGoal(g.value)}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    className="cust-notes"
+                    placeholder="Any other requirements? e.g. 'I'm lactose intolerant' or 'reduce cooking oil'"
+                    value={custNotes}
+                    onChange={e => setCustNotes(e.target.value)}
+                    rows={2}
+                  />
+                  {custError && <p className="ai-error">{custError}</p>}
+                  <div className="cust-actions">
+                    <button
+                      className="nlp-extract-btn"
+                      onClick={loadCustomization}
+                      disabled={custLoading || (!custGoals.length && !custNotes.trim())}
+                    >
+                      {custLoading ? "Customising…" : "Customise Recipe"}
+                    </button>
+                    <button className="nlp-cancel-btn cust-cancel" onClick={() => { setShowCustomize(false); setCustGoals([]); setCustNotes(""); setCustError(""); }}>
+                      Cancel
+                    </button>
+                  </div>
+                  {custLoading && (
+                    <div className="ai-inline-loading" style={{ marginTop: ".75rem" }}>
+                      <div className="spinner" style={{ width: 20, height: 20, margin: 0, borderWidth: 2 }} />
+                      Crafting your personalised version…
+                    </div>
+                  )}
+                </>
+              )}
+
+              {customized && (
+                <>
+                  {custGoals.length > 0 && (
+                    <div className="cust-goals-display">
+                      {custGoals.map(g => (
+                        <span key={g} className="goal-chip active" style={{ cursor: "default" }}>
+                          {HEALTH_GOALS.find(h => h.value === g)?.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {customized.swaps?.length > 0 && (
+                    <div className="cust-swaps">
+                      <h4 className="cust-subhead">Ingredient Swaps</h4>
+                      {customized.swaps.map((s, i) => (
+                        <div key={i} className="swap-row">
+                          <div className="swap-change">
+                            <span className="swap-original">{s.original}</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                              <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                            <span className="swap-replacement">{s.replacement}</span>
+                          </div>
+                          <p className="swap-reason">{s.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {customized.adjusted_steps?.length > 0 && (
+                    <div style={{ marginTop: "1rem" }}>
+                      <h4 className="cust-subhead">Adjusted Steps</h4>
+                      <ol className="steps-list">
+                        {customized.adjusted_steps.map((s, i) => <li key={i}>{s}</li>)}
+                      </ol>
+                    </div>
+                  )}
+
+                  {customized.health_note && (
+                    <div className="health-tip" style={{ marginTop: "1rem" }}>
+                      <strong>Health improvement:</strong> {customized.health_note}
+                    </div>
+                  )}
+
+                  {customized.calories_estimate && (
+                    <div className="cust-calories">
+                      🔥 {customized.calories_estimate}
+                    </div>
+                  )}
+
+                  <button className="ai-dismiss" style={{ marginTop: "1rem" }}
+                    onClick={() => { setCustomized(null); setShowCustomize(true); }}>
+                    ← Try different goals
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* AI Recommendations */}
@@ -224,7 +650,8 @@ const steps = (recipe.instructions || "")
           {!recoLoading && recos.length > 0 && (
             <div className="reco-grid">
               {recos.map(r => (
-                <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason} />
+                <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason}
+                  isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin} />
               ))}
             </div>
           )}

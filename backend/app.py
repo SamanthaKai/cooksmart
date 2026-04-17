@@ -11,6 +11,8 @@ from routes.ingredients import ingredients_bp
 from routes.ai_suggest import ai_bp
 from routes.auth import auth_bp
 from routes.profile import profile_bp
+from routes.nlp import nlp_bp
+from routes.interactions import interactions_bp
 
 app = Flask(__name__)
 
@@ -26,6 +28,8 @@ app.register_blueprint(ingredients_bp, url_prefix='/api')
 app.register_blueprint(ai_bp,          url_prefix='/api')
 app.register_blueprint(auth_bp,        url_prefix='/api')
 app.register_blueprint(profile_bp,     url_prefix='/api')
+app.register_blueprint(nlp_bp,          url_prefix='/api')
+app.register_blueprint(interactions_bp, url_prefix='/api')
 
 @app.route('/api/health')
 def health():

@@ -53,7 +53,7 @@ function ToggleGrid({ options, selected, onChange }) {
   );
 }
 
-export default function ProfilePage({ user, onBack, onUserUpdate }) {
+export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe }) {
   const [name, setName]                       = useState(user.name || "");
   const [dietary, setDietary]                 = useState([]);
   const [allergies, setAllergies]             = useState([]);
@@ -63,6 +63,22 @@ export default function ProfilePage({ user, onBack, onUserUpdate }) {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState("");
   const [success, setSuccess]   = useState(false);
+
+  // ── My Recipes tabs ────────────────────────────────────────────────────────
+  const [myTab, setMyTab]           = useState("saved");   // "saved" | "liked" | "history"
+  const [myRecipes, setMyRecipes]   = useState([]);
+  const [myLoading, setMyLoading]   = useState(false);
+
+  // Load My Recipes when tab changes
+  useEffect(() => {
+    setMyLoading(true);
+    const fn = myTab === "saved" ? api.getSaved :
+               myTab === "liked" ? api.getLiked : api.getHistory;
+    fn()
+      .then(data => setMyRecipes(data.recipes || []))
+      .catch(() => setMyRecipes([]))
+      .finally(() => setMyLoading(false));
+  }, [myTab]);
 
   // Load current profile on mount
   useEffect(() => {
@@ -199,6 +215,56 @@ export default function ProfilePage({ user, onBack, onUserUpdate }) {
             </button>
           </form>
         )}
+
+        {/* ── My Recipes ── */}
+        <div className="my-recipes-section">
+          <h2 className="profile-section-title" style={{ marginBottom: "1rem" }}>My Recipes</h2>
+          <div className="my-recipes-tabs">
+            {[["saved", "🔖 Saved"], ["liked", "❤️ Liked"], ["history", "🕘 History"]].map(([tab, label]) => (
+              <button
+                key={tab}
+                className={`my-recipes-tab${myTab === tab ? " active" : ""}`}
+                onClick={() => setMyTab(tab)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {myLoading ? (
+            <div className="state-center" style={{ padding: "2rem" }}>
+              <div className="spinner" />
+            </div>
+          ) : myRecipes.length === 0 ? (
+            <div className="my-recipes-empty">
+              {myTab === "saved"   && "No saved recipes yet. Tap the bookmark icon on any recipe to save it."}
+              {myTab === "liked"   && "No liked recipes yet. Tap the heart icon on a recipe to like it."}
+              {myTab === "history" && "No history yet. Browse some recipes and they'll appear here."}
+            </div>
+          ) : (
+            <div className="my-recipes-list">
+              {myRecipes.map(r => (
+                <button
+                  key={r.id}
+                  className="my-recipe-row"
+                  onClick={() => onSelectRecipe?.(r.id)}
+                >
+                  <div className="my-recipe-info">
+                    <span className="my-recipe-name">{r.name}</span>
+                    {r.local_name && r.local_name !== r.name && (
+                      <span className="my-recipe-local">{r.local_name}</span>
+                    )}
+                  </div>
+                  <div className="my-recipe-meta">
+                    <span className="meta-chip cuisine" style={{ fontSize: ".75rem" }}>{r.cuisine_type}</span>
+                    <span className="meta-chip" style={{ fontSize: ".75rem" }}>{r.course}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

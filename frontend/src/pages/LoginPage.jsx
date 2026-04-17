@@ -16,7 +16,7 @@ function EyeIcon({ open }) {
   );
 }
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, onBack, isModal = false }) {
   const [tab, setTab]           = useState("login");   // "login" | "register"
   const [name, setName]         = useState("");
   const [email, setEmail]       = useState("");
@@ -52,6 +52,51 @@ export default function LoginPage({ onLogin }) {
     setEmail("");
     setPassword("");
     setShowPw(false);
+  }
+
+  if (isModal) {
+    return (
+      <div className="login-card login-card--modal">
+        {onBack && (
+          <button className="login-modal-close" onClick={onBack} aria-label="Close">✕</button>
+        )}
+        <div className="login-brand">Cook<span>Smart</span></div>
+        <p className="login-tagline">Sign in to save and like recipes</p>
+        <div className="login-tabs">
+          <button className={`login-tab${tab === "login" ? " active" : ""}`} onClick={() => switchTab("login")}>Sign In</button>
+          <button className={`login-tab${tab === "register" ? " active" : ""}`} onClick={() => switchTab("register")}>Create Account</button>
+        </div>
+        <form className="login-form" onSubmit={handleSubmit}>
+          {tab === "register" && (
+            <div className="login-field">
+              <label className="login-label">Full Name</label>
+              <input className="login-input" type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} required autoComplete="name" autoFocus />
+            </div>
+          )}
+          <div className="login-field">
+            <label className="login-label">Email Address</label>
+            <input className="login-input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" autoFocus={tab === "login"} />
+          </div>
+          <div className="login-field">
+            <label className="login-label">Password</label>
+            <div className="login-pw-wrap">
+              <input className="login-input" type={showPw ? "text" : "password"} placeholder={tab === "register" ? "At least 6 characters" : "Your password"} value={password} onChange={e => setPassword(e.target.value)} required autoComplete={tab === "register" ? "new-password" : "current-password"} />
+              <button type="button" className="login-pw-toggle" onClick={() => setShowPw(v => !v)} tabIndex={-1}><EyeIcon open={showPw} /></button>
+            </div>
+          </div>
+          {error && <div className="login-error">{error}</div>}
+          <button className="login-btn" type="submit" disabled={loading}>
+            {loading ? (tab === "register" ? "Creating account…" : "Signing in…") : (tab === "register" ? "Create Account" : "Sign In")}
+          </button>
+        </form>
+        <p className="login-switch">
+          {tab === "login"
+            ? <><span>Don't have an account? </span><button className="login-link" onClick={() => switchTab("register")}>Sign up free</button></>
+            : <><span>Already have an account? </span><button className="login-link" onClick={() => switchTab("login")}>Sign in</button></>
+          }
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -157,6 +202,12 @@ export default function LoginPage({ onLogin }) {
             </>
           )}
         </p>
+
+        {onBack && (
+          <p className="login-browse-link">
+            <button className="login-link" onClick={onBack}>← Browse recipes without signing in</button>
+          </p>
+        )}
       </div>
     </div>
   );

@@ -48,7 +48,23 @@ export const api = {
   ingredientSuggest: (q)      => req(`/ingredients/suggest?q=${encodeURIComponent(q)}`),
 
   // ── AI ────────────────────────────────────────────────────────────────────
-  aiSuggest:   (ingredients) => JSON_POST("/ai/suggest",   { ingredients }),
-  aiRecommend: (recipe_id)   => JSON_POST("/ai/recommend", { recipe_id }),
-  aiGenerate:  (ingredients) => JSON_POST("/ai/generate",  { ingredients }),
+  aiSuggest:      (ingredients)          => JSON_POST("/ai/suggest",      { ingredients }),
+  aiRecommend:    (recipe_id)            => JSON_POST("/ai/recommend",    { recipe_id }),
+  aiGenerate:     (ingredients)          => JSON_POST("/ai/generate",     { ingredients }),
+  aiSubstitutes:  (recipe_id, ingredient)=> JSON_POST("/ai/substitutes",  { recipe_id, ingredient }),
+  aiTips:         (recipe_id)            => JSON_POST("/ai/tips",         { recipe_id }),
+  aiHealth:       (recipe_id)            => JSON_POST("/ai/health",       { recipe_id }),
+  aiEnhance:      (recipe_id)            => JSON_POST("/ai/enhance",      { recipe_id }),
+  aiCustomize:    (recipe_id, goals, notes) => JSON_POST("/ai/customize", { recipe_id, goals, notes }),
+
+  // ── NLP ───────────────────────────────────────────────────────────────────
+  nlpExtract:  (text)        => JSON_POST("/nlp/extract",  { text }),
+
+  // ── Interactions ──────────────────────────────────────────────────────────
+  getInteractions: ()                    => req("/interactions"),
+  toggleInteraction: (recipe_id, type)   => JSON_POST("/interactions/toggle", { recipe_id, type }),
+  interactionView:   (recipe_id)         => JSON_POST("/interactions/view",   { recipe_id }),
+  getSaved:    ()                        => req("/interactions/saved"),
+  getLiked:    ()                        => req("/interactions/liked"),
+  getHistory:  ()                        => req("/interactions/history"),
 };

@@ -21,18 +21,29 @@ function RecipeImage({ recipe, emoji }) {
         className={`card-img-photo${loaded ? " loaded" : ""}`}
         onLoad={() => setLoaded(true)}
         onError={() => {
-          if (idx + 1 < sources.length) {
-            setIdx(i => i + 1);
-          } else {
-            setFailed(true);
-          }
+          if (idx + 1 < sources.length) setIdx(i => i + 1);
+          else setFailed(true);
         }}
       />
     </>
   );
 }
 
-export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCount, requestedCount }) {
+function BookmarkIcon({ filled }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+}
+
+export default function RecipeCard({
+  recipe, emoji, onClick,
+  aiReason, matchCount, requestedCount,
+  isSaved, onToggleSave,
+}) {
   return (
     <div className="recipe-card" onClick={onClick}>
       <div className="card-img">
@@ -40,6 +51,15 @@ export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCoun
         <span className={`card-cuisine${recipe.cuisine_type === "western" ? " western" : ""}`}>
           {recipe.cuisine_type}
         </span>
+        {/* Save button — always shown; handled by parent (guest → modal) */}
+        <button
+          className={`card-save-btn${isSaved ? " saved" : ""}`}
+          onClick={e => { e.stopPropagation(); onToggleSave?.(recipe.id); }}
+          title={isSaved ? "Saved" : "Save recipe"}
+          aria-label={isSaved ? "Remove from saved" : "Save recipe"}
+        >
+          <BookmarkIcon filled={!!isSaved} />
+        </button>
       </div>
 
       <div className="card-body">
@@ -57,9 +77,7 @@ export default function RecipeCard({ recipe, emoji, onClick, aiReason, matchCoun
               : `${matchCount} ingredient${matchCount !== 1 ? "s" : ""} matched`}
           </p>
         )}
-        {aiReason && (
-          <p className="card-ai-reason">{aiReason}</p>
-        )}
+        {aiReason && <p className="card-ai-reason">{aiReason}</p>}
         <div className="card-footer">
           <span className="card-community">{recipe.community || "International"}</span>
           <span className="card-course">{recipe.course}</span>
