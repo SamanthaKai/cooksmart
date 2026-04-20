@@ -373,16 +373,6 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                 rows={3}
                 autoFocus
               />
-              {genPills.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".6rem" }}>
-                  {genPills.map(p => (
-                    <span key={p} className="pill">
-                      {p}
-                      <button type="button" className="pill-remove" onClick={() => setGenPills(ps => ps.filter(x => x !== p))}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
               <div className="ai-gen-actions">
                 <button className="search-btn" onClick={handleGenerate}
                   disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
