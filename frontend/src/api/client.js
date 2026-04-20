@@ -50,7 +50,7 @@ export const api = {
   // ── AI ────────────────────────────────────────────────────────────────────
   aiSuggest:      (ingredients)          => JSON_POST("/ai/suggest",      { ingredients }),
   aiRecommend:    (recipe_id)            => JSON_POST("/ai/recommend",    { recipe_id }),
-  aiGenerate:     (ingredients)          => JSON_POST("/ai/generate",     { ingredients }),
+  aiGenerate:     (ingredients, context)  => JSON_POST("/ai/generate",     { ingredients, context }),
   aiSubstitutes:  (recipe_id, ingredient)=> JSON_POST("/ai/substitutes",  { recipe_id, ingredient }),
   aiTips:         (recipe_id)            => JSON_POST("/ai/tips",         { recipe_id }),
   aiHealth:       (recipe_id)            => JSON_POST("/ai/health",       { recipe_id }),

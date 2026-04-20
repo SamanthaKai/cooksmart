@@ -580,6 +580,7 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 }
 .ai-gen-label { font-size: .88rem; color: rgba(255,255,255,.8); margin-bottom: .85rem; }
 .ai-gen-actions { display: flex; gap: .75rem; margin-top: .75rem; align-items: center; justify-content: center; flex-wrap: wrap; }
+.ai-gen-actions .search-btn { margin-top: 0; }
 .ai-gen-cancel {
   padding: .5rem .9rem;
   background: rgba(255,255,255,.15);

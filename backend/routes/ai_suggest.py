@@ -8,9 +8,24 @@ POST /api/ai/generate       Generate a brand-new Ugandan recipe from scratch
 
 import os
 import json
+import time
 import httpx
 from flask import Blueprint, request, jsonify
 from db import query
+
+# ── Simple in-memory rate limiter for /ai/generate ───────────────────────────
+_gen_calls = {}          # ip -> [timestamps]
+GEN_MAX    = 5           # max requests
+GEN_WINDOW = 60          # per 60 seconds
+
+def _rate_limited(ip):
+    now = time.time()
+    calls = [t for t in _gen_calls.get(ip, []) if now - t < GEN_WINDOW]
+    if len(calls) >= GEN_MAX:
+        return True
+    calls.append(now)
+    _gen_calls[ip] = calls
+    return False
 
 ai_bp = Blueprint('ai', __name__)
 
@@ -231,19 +246,31 @@ def ai_generate():
     """
     Generate a brand-new Ugandan/East African recipe from the user's ingredients.
     """
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    if _rate_limited(ip):
+        return jsonify({'error': 'You\'ve generated a few recipes recently. Please wait a minute and try again.'}), 429
+
     data        = request.get_json(force=True) or {}
     ingredients = [i.strip() for i in data.get('ingredients', []) if i.strip()]
+    context     = (data.get('context') or '').strip()
 
     if not ingredients:
         return jsonify({'error': 'Please provide at least 1 ingredient.'}), 400
 
+    context_line = (
+        f"The user described what they want as: \"{context}\"\n"
+        f"Honour this intent — if they named a specific dish (e.g. 'fried eggs', 'stew'), make THAT dish.\n\n"
+    ) if context else ""
+
     prompt = (
         f"You are a recipe assistant. Generate ONE recipe from the user's ingredients.\n\n"
+        f"{context_line}"
         f"User's ingredients: {', '.join(ingredients)}\n\n"
         f"STRICT RULES — follow every one without exception:\n"
         f"1. Use ONLY the ingredients the user provided. Do NOT add anything they did not mention.\n"
         f"   Never add matoke/matooke, chapati, posho, or any staple unless it is explicitly in the list.\n"
         f"2. The dish_name must directly reflect what these ingredients actually make. Do not rename or reimagine it.\n"
+        f"   If the user described a specific dish (e.g. 'fried eggs'), use that exact dish as dish_name.\n"
         f"3. Only set local_name to a real, well-known local name (e.g. Kikomando, Rolex, Luwombo) if you are\n"
         f"   100% certain it matches this exact dish. If in any doubt, set local_name to null.\n"
         f"4. Do not add filler ingredients to make the dish seem more 'African'. Accuracy is authenticity.\n"

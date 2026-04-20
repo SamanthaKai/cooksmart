@@ -29,8 +29,10 @@ function sessionKey(id) { return `cs_img_${id}`; }
 
 function buildQuery(recipe) {
   const name = recipe.name || "";
-  const cuisine = recipe.cuisine_type === "african" ? "African food" : "food dish";
-  return `${name} ${cuisine}`;
+  if (!name) return "African food dish";
+  if (recipe.cuisine_type === "african") return `${name} Ugandan African food`;
+  if (recipe.cuisine_type === "western") return `${name} food`;
+  return `${name} food dish`;
 }
 
 export async function getRecipeImage(recipe) {

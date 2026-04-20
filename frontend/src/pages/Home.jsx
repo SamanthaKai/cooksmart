@@ -171,14 +171,15 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
 
   async function handleGenerate() {
     let ingredients = [...genPills];
-    if (!ingredients.length && !genText.trim()) {
+    const context = genText.trim();
+    if (!ingredients.length && !context) {
       setError("Describe what you have or add some ingredients."); return;
     }
-    setGenLoading(true); setError("");
+    setGenRecipe(null); setGenLoading(true); setError("");
     // NLP extraction if user typed plain text and no pills yet
-    if (genText.trim() && !ingredients.length) {
+    if (context && !ingredients.length) {
       try {
-        const data = await api.nlpExtract(genText);
+        const data = await api.nlpExtract(context);
         ingredients = data.ingredients || [];
         if (ingredients.length) setGenPills(ingredients);
       } catch {}
@@ -189,7 +190,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     }
     setGenerating(true);
     try {
-      const data = await api.aiGenerate(ingredients);
+      const data = await api.aiGenerate(ingredients, context);
       setGenRecipe(data.recipe);
     } catch (e) {
       setError(e.message || "Failed to generate recipe.");
@@ -385,7 +386,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               <div className="ai-gen-actions">
                 <button className="search-btn" onClick={handleGenerate}
                   disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
-                  {generating ? "Generating…" : genLoading ? "Reading ingredients…" : "Generate Recipe"}
+                  {generating ? "Generating…" : genLoading ? "Reading ingredients…" : "Build my dish"}
                 </button>
                 <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); }}>
                   Cancel
@@ -446,11 +447,6 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             {genRecipe.tips && (
               <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>
             )}
-            <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
-              <button className="search-btn" onClick={() => { setGenRecipe(null); setPills([]); setError(""); }}>
-                Generate Another
-              </button>
-            </div>
           </div>
         )}
 
