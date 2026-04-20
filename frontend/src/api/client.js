@@ -55,7 +55,7 @@ export const api = {
   aiTips:         (recipe_id)            => JSON_POST("/ai/tips",         { recipe_id }),
   aiHealth:       (recipe_id)            => JSON_POST("/ai/health",       { recipe_id }),
   aiEnhance:      (recipe_id)            => JSON_POST("/ai/enhance",      { recipe_id }),
-  aiCustomize:    (recipe_id, goals, notes) => JSON_POST("/ai/customize", { recipe_id, goals, notes }),
+  aiCustomize:    (recipe_id, user_goal)     => JSON_POST("/ai/customize", { recipe_id, user_goal }),
 
   // ── NLP ───────────────────────────────────────────────────────────────────
   nlpExtract:  (text)        => JSON_POST("/nlp/extract",  { text }),
@@ -64,7 +64,8 @@ export const api = {
   getInteractions: ()                    => req("/interactions"),
   toggleInteraction: (recipe_id, type)   => JSON_POST("/interactions/toggle", { recipe_id, type }),
   interactionView:   (recipe_id)         => JSON_POST("/interactions/view",   { recipe_id }),
-  getSaved:    ()                        => req("/interactions/saved"),
-  getLiked:    ()                        => req("/interactions/liked"),
-  getHistory:  ()                        => req("/interactions/history"),
+  getSaved:      ()                        => req("/interactions/saved"),
+  getLiked:      ()                        => req("/interactions/liked"),
+  getHistory:    ()                        => req("/interactions/history"),
+  clearHistory:  ()                        => req("/interactions/history", { method: "DELETE" }),
 };

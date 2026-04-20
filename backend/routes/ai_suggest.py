@@ -238,21 +238,27 @@ def ai_generate():
         return jsonify({'error': 'Please provide at least 1 ingredient.'}), 400
 
     prompt = (
-        f"You are a master chef specialising in authentic Ugandan and East African cuisine.\n\n"
-        f"Available ingredients: {', '.join(ingredients)}\n\n"
-        f"Create one complete, authentic Ugandan or East African recipe using some or all of these.\n"
-        f"Be specific with quantities and traditional techniques.\n\n"
+        f"You are a recipe assistant. Generate ONE recipe from the user's ingredients.\n\n"
+        f"User's ingredients: {', '.join(ingredients)}\n\n"
+        f"STRICT RULES — follow every one without exception:\n"
+        f"1. Use ONLY the ingredients the user provided. Do NOT add anything they did not mention.\n"
+        f"   Never add matoke/matooke, chapati, posho, or any staple unless it is explicitly in the list.\n"
+        f"2. The dish_name must directly reflect what these ingredients actually make. Do not rename or reimagine it.\n"
+        f"3. Only set local_name to a real, well-known local name (e.g. Kikomando, Rolex, Luwombo) if you are\n"
+        f"   100% certain it matches this exact dish. If in any doubt, set local_name to null.\n"
+        f"4. Do not add filler ingredients to make the dish seem more 'African'. Accuracy is authenticity.\n"
+        f"5. If the ingredients only make a simple dish, return that simple dish. Do not over-complicate.\n\n"
         f"Respond ONLY with a valid JSON object — no markdown, no extra text:\n"
         f'{{\n'
-        f'  "dish_name": "English name",\n'
-        f'  "local_name": "Local/traditional name or null",\n'
-        f'  "cuisine": "Ugandan or East African",\n'
-        f'  "cooking_time": "e.g. 45 minutes",\n'
-        f'  "servings": "e.g. 4 people",\n'
-        f'  "description": "Two sentences on the dish and its cultural significance.",\n'
+        f'  "dish_name": "English name that matches exactly what these ingredients make",\n'
+        f'  "local_name": "Verified local name or null",\n'
+        f'  "cuisine": "e.g. Ugandan, East African, or most accurate label",\n'
+        f'  "cooking_time": "e.g. 30 minutes",\n'
+        f'  "servings": "e.g. 2 people",\n'
+        f'  "description": "Two honest sentences about this specific dish.",\n'
         f'  "ingredients": [{{"item": "name", "quantity": "amount + unit"}}],\n'
         f'  "steps": ["Step 1: ...", "Step 2: ..."],\n'
-        f'  "tips": "A cooking tip or serving suggestion."\n'
+        f'  "tips": "One practical tip for this specific dish."\n'
         f'}}'
     )
 
@@ -266,7 +272,7 @@ def ai_generate():
         return jsonify({'error': 'AI returned an unexpected format. Please try again.'}), 500
     except Exception as e:
         print(f"[ai/generate] {e}")
-        return jsonify({'error': 'Failed to generate recipe. Please try again.'}), 500
+        return jsonify({'error': f'Generate failed: {e}'}), 500
 
 
 # ── /ai/substitutes ───────────────────────────────────────────────────────────
@@ -354,7 +360,7 @@ def ai_tips():
         return jsonify({'error': str(e)}), 503
     except Exception as e:
         print(f"[ai/tips] {e}")
-        return jsonify({'error': 'Failed to get cooking tips. Please try again.'}), 500
+        return jsonify({'error': f'Tips failed: {e}'}), 500
 
 
 # ── /ai/health ────────────────────────────────────────────────────────────────
@@ -384,15 +390,21 @@ def ai_health():
         return jsonify({'error': 'Recipe not found'}), 404
 
     prompt = (
-        f"You are a nutrition expert.\n\n"
-        f"Recipe: {recipe['name']}\n"
-        f"Ingredients: {(recipe['ingredient_list'] or '')[:200]}\n\n"
-        f"Provide a brief health analysis of this dish.\n\n"
-        f"Reply ONLY with this JSON structure — no markdown:\n"
+        f"You are a nutrition-aware cooking assistant for CookSmart, an African cuisine app.\n\n"
+        f"The user is viewing this recipe:\n"
+        f"- Name: {recipe['name']}\n"
+        f"- Ingredients: {(recipe['ingredient_list'] or '')[:250]}\n\n"
+        f"Give a brief, friendly nutrition summary in 3-4 sentences. Cover:\n"
+        f"- What the dish is generally good for (energy, protein, vitamins, etc.)\n"
+        f"- Any ingredients worth noting for health (good fats, vitamins, fibre)\n"
+        f"- One honest caution if relevant (e.g. high in salt, heavy on carbs)\n\n"
+        f"Speak like a knowledgeable friend, not a medical journal. "
+        f"No milligrams, no lab numbers. Keep it practical and readable.\n\n"
+        f"Reply ONLY with this JSON — no markdown:\n"
         f'{{\n'
-        f'  "summary": "2-3 sentences on overall healthiness of this dish",\n'
-        f'  "benefits": [{{"nutrient": "name", "benefit": "one-line benefit"}}],\n'
-        f'  "tip": "one practical dietary tip for this dish"\n'
+        f'  "summary": "3-4 friendly sentences as described above",\n'
+        f'  "benefits": [{{"nutrient": "name", "benefit": "one plain-English line"}}],\n'
+        f'  "tip": "one practical, specific tip for this dish"\n'
         f'}}'
     )
 
@@ -403,7 +415,7 @@ def ai_health():
         return jsonify({'error': str(e)}), 503
     except Exception as e:
         print(f"[ai/health] {e}")
-        return jsonify({'error': 'Failed to get health insights. Please try again.'}), 500
+        return jsonify({'error': f'Health failed: {e}'}), 500
 
 
 # ── /ai/enhance ───────────────────────────────────────────────────────────────
@@ -459,7 +471,7 @@ def ai_enhance():
         return jsonify({'error': str(e)}), 503
     except Exception as e:
         print(f"[ai/enhance] {e}")
-        return jsonify({'error': 'Failed to enhance recipe. Please try again.'}), 500
+        return jsonify({'error': f'Enhance failed: {e}'}), 500
 
 
 # ── /ai/customize ─────────────────────────────────────────────────────────────
@@ -467,19 +479,17 @@ def ai_enhance():
 @ai_bp.route('/ai/customize', methods=['POST'])
 def ai_customize():
     """
-    Customise a recipe for specific dietary goals or health needs.
-    Returns ingredient swaps with health reasoning + calorie estimate.
-    Body: { recipe_id, goals: ['low-carb', ...], notes: "any extra requirements" }
+    Advise on a recipe for a user's specific health goal or condition.
+    Body: { recipe_id, user_goal: "I have diabetes" }
     """
     data      = request.get_json(force=True) or {}
     recipe_id = data.get('recipe_id')
-    goals     = data.get('goals', [])
-    notes     = (data.get('notes') or '').strip()
+    user_goal = (data.get('user_goal') or '').strip()
 
     if not recipe_id:
         return jsonify({'error': 'recipe_id is required'}), 400
-    if not goals and not notes:
-        return jsonify({'error': 'Please select at least one health goal.'}), 400
+    if not user_goal:
+        return jsonify({'error': 'Please describe your health goal or condition.'}), 400
 
     recipe = query(
         """
@@ -494,36 +504,38 @@ def ai_customize():
     if not recipe:
         return jsonify({'error': 'Recipe not found'}), 404
 
-    goals_text = ', '.join(goals) if goals else 'healthier overall'
-    extra      = f"\nAdditional requirements: {notes}" if notes else ""
-
     prompt = (
-        f"You are a nutritionist and chef specialising in Ugandan and East African cuisine.\n\n"
-        f"Recipe: {recipe['name']} ({recipe['cuisine_type']}, {recipe['course']})\n"
-        f"Ingredients: {(recipe['ingredient_list'] or 'Not listed')[:300]}\n"
-        f"Instructions (summary): {(recipe['instructions'] or '')[:400]}\n\n"
-        f"Health goals: {goals_text}{extra}\n\n"
-        f"Make smart ingredient swaps and adjustments to meet these goals.\n"
-        f"Keep the dish as authentic as possible while improving its nutritional profile.\n"
-        f"Only include swaps that actually matter for the stated goals.\n\n"
+        f"You are a nutrition-aware cooking assistant for CookSmart, an African cuisine app.\n\n"
+        f"The user is viewing this recipe:\n"
+        f"- Name: {recipe['name']}\n"
+        f"- Ingredients: {(recipe['ingredient_list'] or 'Not listed')[:300]}\n"
+        f"- Preparation: {(recipe['instructions'] or 'Not available')[:400]}\n\n"
+        f"The user's dietary goal or condition is: {user_goal}\n\n"
+        f"Based on their goal, respond with all four of these:\n"
+        f"1. Is this dish suitable for them? Answer with exactly one of: yes / with modifications / avoid\n"
+        f"2. Specific, practical changes to ingredients or preparation — no vague advice\n"
+        f"3. What to add or pair this dish with to better meet their goal\n"
+        f"4. One short, warm encouragement — not dramatic\n\n"
+        f"Rules:\n"
+        f"- No milligrams or lab measurements\n"
+        f"- Speak plainly and warmly, like a knowledgeable friend\n"
+        f"- Keep African cuisine context — suggest African ingredient alternatives, not Western substitutes\n"
+        f"- If the goal is weight gain, focus on calorie-dense additions that are realistic and locally available\n\n"
         f"Reply ONLY with this JSON — no markdown:\n"
         f'{{\n'
-        f'  "swaps": [{{\n'
-        f'    "original": "original ingredient",\n'
-        f'    "replacement": "healthier alternative",\n'
-        f'    "reason": "specific health benefit (one sentence)"\n'
-        f'  }}],\n'
-        f'  "adjusted_steps": ["Any steps that change because of the swaps — empty array if unchanged"],\n'
-        f'  "health_note": "2-sentence summary of overall improvement",\n'
-        f'  "calories_estimate": "rough estimate e.g. ~320 kcal per serving"\n'
+        f'  "suitability": "yes | with modifications | avoid",\n'
+        f'  "adjustments": [{{"change": "specific change", "reason": "why it helps"}}],\n'
+        f'  "pairings": ["suggestion 1", "suggestion 2"],\n'
+        f'  "encouragement": "short warm sentence",\n'
+        f'  "health_note": "2-sentence overall summary"\n'
         f'}}'
     )
 
     try:
         result = _safe_json(call_llm([{"role": "user", "content": prompt}], max_tokens=800))
-        return jsonify({'recipe': recipe['name'], 'goals': goals, 'customized': result})
+        return jsonify({'recipe': recipe['name'], 'user_goal': user_goal, 'customized': result})
     except RuntimeError as e:
         return jsonify({'error': str(e)}), 503
     except Exception as e:
         print(f"[ai/customize] {e}")
-        return jsonify({'error': 'Failed to customise recipe. Please try again.'}), 500
+        return jsonify({'error': f'Customize failed: {e}'}), 500

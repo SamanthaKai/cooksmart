@@ -1,20 +1,64 @@
-export function getRecipeImageUrl(recipe) {
-  // Clean the recipe name (remove special chars, keep spaces as-is for filename)
-  const cleanName = recipe.name.trim();
-  
-  // Try exact match first (with spaces)
-  const exactMatch = `/images/id_${recipe.id} ${cleanName}.jpg`;
-  const exactMatchPng = `/images/id_${recipe.id} ${cleanName}.png`;
-  const exactMatchWebp = `/images/id_${recipe.id} ${cleanName}.webp`;
-  const exactMatchJpeg = `/images/id_${recipe.id} ${cleanName}.jpeg`;
-  
-  // Try with hyphens instead of spaces (like id_12-Bean-Stew)
-  const hyphenName = cleanName.replace(/ /g, '-');
-  const hyphenMatch = `/images/id_${recipe.id}-${hyphenName}.jpg`;
-  
-  // Fallback to just ID
-  const idOnly = `/images/id_${recipe.id}.jpg`;
-  const idOnlyPng = `/images/id_${recipe.id}.png`;
-  
-  return [exactMatch, exactMatchPng, exactMatchWebp, exactMatchJpeg, hyphenMatch, idOnly, idOnlyPng];
+const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || "";
+const BASE_URL = "https://api.unsplash.com/search/photos";
+
+// In-memory cache so the same recipe never fires twice per session
+const memCache = new Map();
+
+// Throttle: max 3 concurrent Unsplash requests so 12 cards don't all fire at once
+let _active = 0;
+const _queue = [];
+const MAX_CONCURRENT = 3;
+
+function throttledFetch(url) {
+  return new Promise((resolve, reject) => {
+    function attempt() {
+      if (_active >= MAX_CONCURRENT) { _queue.push(attempt); return; }
+      _active++;
+      fetch(url)
+        .then(resolve, reject)
+        .finally(() => {
+          _active--;
+          if (_queue.length) _queue.shift()();
+        });
+    }
+    attempt();
+  });
+}
+
+function sessionKey(id) { return `cs_img_${id}`; }
+
+function buildQuery(recipe) {
+  const name = recipe.name || "";
+  const cuisine = recipe.cuisine_type === "african" ? "African food" : "food dish";
+  return `${name} ${cuisine}`;
+}
+
+export async function getRecipeImage(recipe) {
+  const sk = sessionKey(recipe.id);
+
+  if (memCache.has(sk)) return memCache.get(sk);
+
+  try {
+    const stored = sessionStorage.getItem(sk);
+    if (stored) { memCache.set(sk, stored); return stored; }
+  } catch {}
+
+  if (!UNSPLASH_KEY) return null;
+
+  try {
+    const res = await throttledFetch(
+      `${BASE_URL}?query=${encodeURIComponent(buildQuery(recipe))}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Use "small" (400px wide) — fast, good enough for cards and detail hero
+    const url = data.results?.[0]?.urls?.small ?? null;
+    if (url) {
+      memCache.set(sk, url);
+      try { sessionStorage.setItem(sk, url); } catch {}
+    }
+    return url;
+  } catch {
+    return null;
+  }
 }

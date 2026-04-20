@@ -114,31 +114,34 @@ export default function App() {
     );
   }
 
+  const onRecipePage = page === "recipe" && !!currentRecipeId;
+
   return (
     <>
-      {page === "recipe" && currentRecipeId ? (
+      {/* Home stays mounted so scroll position + search results are preserved on back */}
+      <div style={{ display: onRecipePage ? "none" : undefined }}>
+        <Home
+          onSelectRecipe={handleSelectRecipe}
+          user={user}
+          onLogout={handleLogout}
+          onProfile={() => setPage("profile")}
+          onLogin={() => setPage("login")}
+          savedIds={savedIds}
+          onToggleSave={handleToggleSave}
+          onRequestLogin={requestLogin}
+        />
+      </div>
+
+      {onRecipePage && (
         <div className="app">
           <RecipeDetail
             recipeId={currentRecipeId}
-            onBack={() => setPage("home")}
+            onBack={() => { setPage("home"); window.scrollTo(0, 0); }}
             onSelectRecipe={handleSelectRecipe}
             savedIds={savedIds}
             likedIds={likedIds}
             onToggleSave={handleToggleSave}
             onToggleLike={handleToggleLike}
-            onRequestLogin={requestLogin}
-          />
-        </div>
-      ) : (
-        <div className="app">
-          <Home
-            onSelectRecipe={handleSelectRecipe}
-            user={user}
-            onLogout={handleLogout}
-            onProfile={() => setPage("profile")}
-            onLogin={() => setPage("login")}
-            savedIds={savedIds}
-            onToggleSave={handleToggleSave}
             onRequestLogin={requestLogin}
           />
         </div>

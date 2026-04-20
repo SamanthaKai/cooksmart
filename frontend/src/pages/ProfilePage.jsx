@@ -68,6 +68,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [myTab, setMyTab]           = useState("saved");   // "saved" | "liked" | "history"
   const [myRecipes, setMyRecipes]   = useState([]);
   const [myLoading, setMyLoading]   = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
 
   // Load My Recipes when tab changes
   useEffect(() => {
@@ -79,6 +80,16 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
       .catch(() => setMyRecipes([]))
       .finally(() => setMyLoading(false));
   }, [myTab]);
+
+  async function handleClearHistory() {
+    if (!window.confirm("Clear all your viewing history?")) return;
+    setClearingHistory(true);
+    try {
+      await api.clearHistory();
+      setMyRecipes([]);
+    } catch {}
+    setClearingHistory(false);
+  }
 
   // Load current profile on mount
   useEffect(() => {
@@ -218,7 +229,19 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
 
         {/* ── My Recipes ── */}
         <div className="my-recipes-section">
-          <h2 className="profile-section-title" style={{ marginBottom: "1rem" }}>My Recipes</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+            <h2 className="profile-section-title" style={{ margin: 0 }}>My Recipes</h2>
+            {myTab === "history" && myRecipes.length > 0 && (
+              <button
+                className="ai-dismiss"
+                style={{ fontSize: ".82rem", color: "#c0392b" }}
+                onClick={handleClearHistory}
+                disabled={clearingHistory}
+              >
+                {clearingHistory ? "Clearing…" : "🗑 Clear history"}
+              </button>
+            )}
+          </div>
           <div className="my-recipes-tabs">
             {[["saved", "🔖 Saved"], ["liked", "❤️ Liked"], ["history", "🕘 History"]].map(([tab, label]) => (
               <button

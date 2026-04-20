@@ -1,0 +1,25 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="8" fill="#C4622D"/>
+  
+  <!-- steam lines -->
+  <path d="M11 9 Q10 7 11 5 Q12 3 11 1" stroke="#FFF0E0" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M16 8 Q15 6 16 4 Q17 2 16 0" stroke="#FFF0E0" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M21 9 Q20 7 21 5 Q22 3 21 1" stroke="#FFF0E0" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <!-- pot lid -->
+  <rect x="8" y="10" width="16" height="3" rx="1.5" fill="#FFF0E0"/>
+  <!-- lid handle -->
+  <rect x="14" y="8" width="4" height="3" rx="1" fill="#FFF0E0"/>
+
+  <!-- pot body -->
+  <path d="M7 13 Q6 22 7 24 Q8 27 16 27 Q24 27 25 24 Q26 22 25 13 Z" fill="#FFF0E0"/>
+
+  <!-- pot handles -->
+  <path d="M7 16 Q4 16 4 18 Q4 20 7 20" stroke="#FFF0E0" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M25 16 Q28 16 28 18 Q28 20 25 20" stroke="#FFF0E0" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+
+  <!-- food dots inside pot (tomatoes/beans) -->
+  <circle cx="13" cy="21" r="2" fill="#E05A2B"/>
+  <circle cx="16" cy="22.5" r="2" fill="#3A7A35"/>
+  <circle cx="19" cy="21" r="2" fill="#E05A2B"/>
+</svg>

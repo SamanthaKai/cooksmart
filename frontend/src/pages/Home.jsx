@@ -20,7 +20,7 @@ function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
         ))}
         <input
           className="ing-input"
-          placeholder={pills.length === 0 ? "Type an ingredient, press Enter…" : "Add another…"}
+          placeholder={pills.length === 0 ? "Add at least 2 ingredients…" : "Add another…"}
           value={ingInput}
           onChange={onIngChange}
           onKeyDown={onKeyDown}
@@ -38,7 +38,7 @@ function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
           </div>
         )}
       </div>
-      <p className="ing-hint">{hint}</p>
+      {pills.length > 0 && <p className="ing-hint">{hint}</p>}
     </div>
   );
 }
@@ -65,10 +65,11 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   const [genRecipe, setGenRecipe]   = useState(null);
   const [generating, setGenerating] = useState(false);
 
-  const [nlpOpen, setNlpOpen]       = useState(false);
-  const [nlpText, setNlpText]       = useState("");
-  const [nlpLoading, setNlpLoading] = useState(false);
-  const [nlpUnmatched, setNlpUnmatched] = useState([]);
+  // ── AI Generate CTA (bottom section) ─────────────────────────────────────
+  const [genOpen, setGenOpen]   = useState(false);
+  const [genText, setGenText]   = useState("");
+  const [genPills, setGenPills] = useState([]);
+  const [genLoading, setGenLoading] = useState(false);
 
   const [cuisine, setCuisine]       = useState("");
   const [course, setCourse]         = useState("");
@@ -110,9 +111,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
 
   // ── Ingredient auto-suggest (debounced) ───────────────────────────────────
   useEffect(() => {
-    if ((mode !== "ingredients" && mode !== "generate") || ingInput.length < 2) {
-      setIngSuggest([]); return;
-    }
+    if (mode !== "ingredients" || ingInput.length < 2) { setIngSuggest([]); return; }
     const t = setTimeout(async () => {
       try { setIngSuggest(await api.ingredientSuggest(ingInput)); } catch {}
     }, 250);
@@ -123,7 +122,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   useEffect(() => {
     function handle(e) {
       if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
-      if (ingRef.current    && !ingRef.current.contains(e.target))    setShowIngSug(false);
+      if (ingRef.current     && !ingRef.current.contains(e.target))     setShowIngSug(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
@@ -171,15 +170,31 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   }
 
   async function handleGenerate() {
-    if (pills.length < 1) { setError("Add at least 1 ingredient."); return; }
-    setGenerating(true); setError(""); setGenRecipe(null);
+    let ingredients = [...genPills];
+    if (!ingredients.length && !genText.trim()) {
+      setError("Describe what you have or add some ingredients."); return;
+    }
+    setGenLoading(true); setError("");
+    // NLP extraction if user typed plain text and no pills yet
+    if (genText.trim() && !ingredients.length) {
+      try {
+        const data = await api.nlpExtract(genText);
+        ingredients = data.ingredients || [];
+        if (ingredients.length) setGenPills(ingredients);
+      } catch {}
+    }
+    if (!ingredients.length) {
+      setError("Couldn't extract ingredients — try listing them more specifically.");
+      setGenLoading(false); return;
+    }
+    setGenerating(true);
     try {
-      const data = await api.aiGenerate(pills);
+      const data = await api.aiGenerate(ingredients);
       setGenRecipe(data.recipe);
     } catch (e) {
       setError(e.message || "Failed to generate recipe.");
     } finally {
-      setGenerating(false);
+      setGenerating(false); setGenLoading(false);
     }
   }
 
@@ -214,32 +229,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     setMode(m); setSearched(false);
     setResults([]); setAiResults([]); setPartials([]);
     setError(""); setQuery(""); setPills([]);
-    setIngInput(""); setGenRecipe(null);
-    setNlpOpen(false); setNlpText(""); setNlpUnmatched([]);
-  }
-
-  async function handleNlpExtract() {
-    if (!nlpText.trim()) return;
-    setNlpLoading(true); setNlpUnmatched([]);
-    try {
-      const data = await api.nlpExtract(nlpText);
-      if (data.ingredients?.length) {
-        setPills(prev => {
-          const merged = [...prev];
-          for (const ing of data.ingredients) {
-            if (!merged.includes(ing)) merged.push(ing);
-          }
-          return merged;
-        });
-      }
-      setNlpUnmatched(data.unmatched || []);
-      setNlpText("");
-      setNlpOpen(false);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setNlpLoading(false);
-    }
+    setIngInput("");
   }
 
   const emoji = (r) => {
@@ -260,12 +250,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     return "🍽️";
   };
 
-  const pillHint = mode === "generate"
-    ? pills.length === 0 ? "Add at least 1 ingredient"
-      : `${pills.length} ingredient${pills.length !== 1 ? "s" : ""} added — ready to generate!`
-    : pills.length === 0 ? "Add at least 2 ingredients"
-      : pills.length === 1 ? "Add 1 more ingredient"
-      : `${pills.length} ingredients added — ready to search!`;
+  const pillHint = pills.length === 0 ? "Add at least 2 ingredients"
+    : pills.length === 1 ? "Add 1 more ingredient"
+    : `${pills.length} ingredients added — ready to search!`;
 
   return (
     <div className="app">
@@ -293,16 +280,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
 
       {/* ── Hero ── */}
       <div className="hero">
-        <h1>
-          {mode === "generate"
-            ? "Generate a Recipe with AI"
-            : "Discover African cuisine\u00a0& beyond"}
-        </h1>
-        <p>
-          {mode === "generate"
-            ? "Tell CookSmart AI what ingredients you have — it will create an authentic Ugandan recipe just for you."
-            : "Search by dish name, or tell us what's in your kitchen and we'll find something delicious."}
-        </p>
+        <h1>Discover African cuisine&nbsp;&amp; beyond</h1>
+        <p>Search by dish name, or tell us what's in your kitchen and we'll find something delicious.</p>
 
         {/* Mode toggle */}
         <div className="mode-toggle">
@@ -311,9 +290,6 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
           </button>
           <button className={`mode-btn${mode === "ingredients" ? " active" : ""}`} onClick={() => switchMode("ingredients")}>
             By ingredients
-          </button>
-          <button className={`mode-btn${mode === "generate" ? " active" : ""}`} onClick={() => switchMode("generate")}>
-            ✨ AI Generate
           </button>
         </div>
 
@@ -354,8 +330,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
           </div>
         )}
 
-        {/* Ingredient / Generate pill input */}
-        {(mode === "ingredients" || mode === "generate") && (
+        {/* Ingredient pill input */}
+        {mode === "ingredients" && (
           <>
             <PillInput
               pills={pills}
@@ -371,52 +347,53 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               onRemovePill={handleRemovePill}
             />
             <div style={{ marginTop: ".75rem" }}>
-              {mode === "ingredients" ? (
-                <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
-                  {loading ? "Searching…" : "Find recipes"}
-                </button>
-              ) : (
-                <button className="search-btn" onClick={handleGenerate} disabled={pills.length < 1 || generating}>
-                  {generating ? "Generating…" : "Generate Recipe"}
-                </button>
-              )}
+              <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
+                {loading ? "Searching…" : "Find recipes"}
+              </button>
             </div>
 
-            {/* ── NLP: describe what you have ── */}
-            <div className="nlp-wrap">
-              {!nlpOpen ? (
-                <button className="nlp-toggle" onClick={() => setNlpOpen(true)}>
-                  or describe what you have in plain English
-                </button>
-              ) : (
-                <div className="nlp-box">
-                  <textarea
-                    className="nlp-textarea"
-                    placeholder='e.g. "I have some chicken, a few tomatoes and garlic at home"'
-                    value={nlpText}
-                    onChange={e => setNlpText(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleNlpExtract(); }}
-                    rows={3}
-                    autoFocus
-                  />
-                  <div className="nlp-actions">
-                    <button className="nlp-extract-btn" onClick={handleNlpExtract} disabled={!nlpText.trim() || nlpLoading}>
-                      {nlpLoading ? "Extracting…" : "Extract ingredients"}
-                    </button>
-                    <button className="nlp-cancel-btn" onClick={() => { setNlpOpen(false); setNlpText(""); }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-              {nlpUnmatched.length > 0 && (
-                <p className="nlp-unmatched">
-                  Not found in our database: <em>{nlpUnmatched.join(", ")}</em>
-                </p>
-              )}
-            </div>
           </>
         )}
+
+        {/* ── AI Generate CTA ── */}
+        <div className="ai-gen-cta">
+          {!genOpen ? (
+            <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
+              ✨ Not sure what to cook? Use CookSmart AI
+            </button>
+          ) : (
+            <div className="ai-gen-box">
+              <textarea
+                className="nlp-textarea"
+                placeholder='Describe what you have in plain English, e.g. "I have chicken, tomatoes and some garlic at home"'
+                value={genText}
+                onChange={e => setGenText(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
+                rows={3}
+                autoFocus
+              />
+              {genPills.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".6rem" }}>
+                  {genPills.map(p => (
+                    <span key={p} className="pill">
+                      {p}
+                      <button type="button" className="pill-remove" onClick={() => setGenPills(ps => ps.filter(x => x !== p))}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="ai-gen-actions">
+                <button className="search-btn" onClick={handleGenerate}
+                  disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
+                  {generating ? "Generating…" : genLoading ? "Reading ingredients…" : "Generate Recipe"}
+                </button>
+                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Main content ── */}
@@ -424,7 +401,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
         {error && <div className="error-banner">{error}</div>}
 
         {/* Generate results */}
-        {mode === "generate" && generating && (
+        {generating && (
           <div className="gen-loading">
             <div className="spinner" style={{ margin: "0 auto 1rem" }} />
             <p>CookSmart AI is creating your recipe…</p>
@@ -432,7 +409,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
           </div>
         )}
 
-        {mode === "generate" && genRecipe && (
+        {genRecipe && (
           <div className="gen-panel">
             <div className="gen-header">
               <span className="ai-badge gen-badge">AI-Generated Recipe</span>
@@ -478,9 +455,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
         )}
 
         {/* Browse / search results */}
-        {mode !== "generate" && (
-          <>
-            {!searched && (
+        <>
+          {!searched && (
               <div className="filters">
                 <span className="filter-label">Cuisine:</span>
                 {["african","western"].map(c => (
@@ -573,8 +549,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                 <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
               </div>
             )}
-          </>
-        )}
+        </>
       </div>
     </div>
   );

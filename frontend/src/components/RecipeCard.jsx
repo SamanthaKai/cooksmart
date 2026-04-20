@@ -1,31 +1,34 @@
-import { useState } from "react";
-import { getRecipeImageUrl } from "../utils/imageHelper";
+import { useState, useEffect } from "react";
+import { getRecipeImage } from "../utils/imageHelper";
 
 function RecipeImage({ recipe, emoji }) {
-  const sources = getRecipeImageUrl(recipe);
-  const [idx, setIdx]       = useState(0);
+  const [src, setSrc]       = useState(null);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    getRecipeImage(recipe).then(url => {
+      if (!active) return;
+      if (url) setSrc(url);
+      else setFailed(true);
+    }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [recipe.id]);
+
   if (failed) return <span className="card-img-emoji">{emoji}</span>;
+  if (!src) return <span className="card-img-skeleton" aria-hidden="true" />;
 
   return (
-    <>
-      {!loaded && <span className="card-img-skeleton" aria-hidden="true" />}
-      <img
-        key={sources[idx]}
-        src={sources[idx]}
-        alt={recipe.name}
-        loading="lazy"
-        decoding="async"
-        className={`card-img-photo${loaded ? " loaded" : ""}`}
-        onLoad={() => setLoaded(true)}
-        onError={() => {
-          if (idx + 1 < sources.length) setIdx(i => i + 1);
-          else setFailed(true);
-        }}
-      />
-    </>
+    <img
+      src={src}
+      alt={recipe.name}
+      loading="lazy"
+      decoding="async"
+      className={`card-img-photo${loaded ? " loaded" : ""}`}
+      onLoad={() => setLoaded(true)}
+      onError={() => setFailed(true)}
+    />
   );
 }
 

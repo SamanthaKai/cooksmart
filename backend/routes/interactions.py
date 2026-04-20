@@ -161,3 +161,16 @@ def get_history():
         return err
     ensure_table()
     return jsonify({'recipes': _recipes_for_type(user_id, 'viewed', limit=20)})
+
+
+@interactions_bp.route('/interactions/history', methods=['DELETE'])
+def clear_history():
+    user_id, err = require_auth()
+    if err:
+        return err
+    ensure_table()
+    execute(
+        "DELETE FROM user_interactions WHERE user_id=%s AND type='viewed'",
+        (user_id,)
+    )
+    return jsonify({'ok': True})
