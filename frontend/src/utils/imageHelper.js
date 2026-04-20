@@ -1,10 +1,11 @@
 const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || "";
 const BASE_URL = "https://api.unsplash.com/search/photos";
 
-// In-memory cache so the same recipe never fires twice per session
+// In-memory + sessionStorage cache (v3 key busts any old Unsplash-cached African URLs)
 const memCache = new Map();
+function sessionKey(id) { return `cs_img_v3_${id}`; }
 
-// Throttle: max 3 concurrent Unsplash requests so 12 cards don't all fire at once
+// Throttle: max 3 concurrent Unsplash requests
 let _active = 0;
 const _queue = [];
 const MAX_CONCURRENT = 3;
@@ -25,24 +26,23 @@ function throttledFetch(url) {
   });
 }
 
-function sessionKey(id) { return `cs_img_${id}`; }
+// Extensions that differ from the default .jpg
+const LOCAL_EXT = {
+  19: ".png",
+  23: ".jpeg",
+  24: ".webp",
+  28: ".jpeg",
+  43: ".png",
+  59: ".png",
+  60: ".png",
+  63: ".png",
+  65: ".png",
+  66: ".png",
+};
 
-// Try to find a local image for the recipe (used for African dishes)
-async function getLocalImage(recipe) {
-  const base = `/images/id_${recipe.id} ${recipe.name}`;
-  for (const ext of [".jpg", ".jpeg", ".png", ".webp"]) {
-    try {
-      const res = await fetch(encodeURI(base + ext), { method: "HEAD" });
-      if (res.ok) return base + ext;
-    } catch {}
-  }
-  return null;
-}
-
-function buildUnsplashQuery(recipe) {
-  const name = recipe.name || "";
-  if (!name) return "food dish";
-  return `${name} food`;
+function getLocalImageUrl(recipe) {
+  const ext = LOCAL_EXT[recipe.id] || ".jpg";
+  return `/images/id_${recipe.id} ${recipe.name}${ext}`;
 }
 
 export async function getRecipeImage(recipe) {
@@ -55,22 +55,20 @@ export async function getRecipeImage(recipe) {
     if (stored) { memCache.set(sk, stored); return stored; }
   } catch {}
 
-  // African dishes: use local images only
+  // African dishes: serve local image directly — no API call needed
   if (recipe.cuisine_type === "african") {
-    const local = await getLocalImage(recipe);
-    if (local) {
-      memCache.set(sk, local);
-      try { sessionStorage.setItem(sk, local); } catch {}
-    }
-    return local;
+    const url = getLocalImageUrl(recipe);
+    memCache.set(sk, url);
+    try { sessionStorage.setItem(sk, url); } catch {}
+    return url;
   }
 
-  // Western / other dishes: use Unsplash
+  // Western / other: use Unsplash
   if (!UNSPLASH_KEY) return null;
 
   try {
     const res = await throttledFetch(
-      `${BASE_URL}?query=${encodeURIComponent(buildUnsplashQuery(recipe))}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`
+      `${BASE_URL}?query=${encodeURIComponent((recipe.name || "") + " food")}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`
     );
     if (!res.ok) return null;
     const data = await res.json();
