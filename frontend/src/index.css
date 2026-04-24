@@ -1572,6 +1572,139 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 }
 .gen-tips strong { color: var(--earth); }
 
+/* ── Health tip card ── */
+.gen-health-tip {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.25rem 2rem;
+  background: #eef7f2;
+  border-top: 1px solid #c3e8d5;
+}
+.gen-health-icon {
+  font-size: 1.35rem;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.gen-health-tip strong {
+  display: block;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: .35rem;
+}
+.gen-health-tip p {
+  font-size: .9rem;
+  color: #2a4a38;
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* ── Gen recipe save bar ── */
+.gen-save-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background: var(--cream);
+  border-top: 1px solid var(--cream-dark);
+  flex-wrap: wrap;
+}
+.gen-save-btn {
+  padding: .55rem 1.35rem;
+  background: var(--green);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.gen-save-btn:hover:not(:disabled) { background: var(--green-light); }
+.gen-save-btn:disabled {
+  background: var(--border);
+  color: var(--stone);
+  cursor: not-allowed;
+}
+.gen-save-btn.saved { background: var(--green-light); cursor: default; }
+.gen-save-hint {
+  font-size: .82rem;
+  color: var(--stone);
+}
+
+/* ── Guest generation counter note ── */
+.gen-guest-note {
+  font-size: .8rem;
+  color: rgba(255,255,255,.75);
+  margin: -.25rem 0 .5rem;
+  text-align: left;
+}
+
+/* ── Guest generation limit box ── */
+.gen-limit-box {
+  background: rgba(255,255,255,.12);
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
+  text-align: center;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.gen-limit-box p {
+  font-size: .97rem;
+  color: var(--white);
+  margin-bottom: 1.25rem;
+  line-height: 1.6;
+}
+.gen-limit-signin-btn {
+  padding: .65rem 1.6rem;
+  background: var(--white);
+  color: var(--earth-dark);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.gen-limit-signin-btn:hover { background: var(--cream); transform: translateY(-1px); }
+
+/* ── My Generated Recipes section (Profile) ── */
+.my-gen-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.my-gen-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+.my-gen-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .8rem 1rem;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.my-gen-info {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+
 /* ── Navbar profile button ── */
 .navbar-profile-btn {
   background: transparent;

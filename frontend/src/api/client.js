@@ -60,6 +60,10 @@ export const api = {
   // ── NLP ───────────────────────────────────────────────────────────────────
   nlpExtract:  (text)        => JSON_POST("/nlp/extract",  { text }),
 
+  // ── Generated Recipes ─────────────────────────────────────────────────────
+  saveGeneratedRecipe: (recipe) => JSON_POST("/generated-recipes", recipe),
+  getGeneratedRecipes: ()       => req("/generated-recipes"),
+
   // ── Interactions ──────────────────────────────────────────────────────────
   getInteractions: ()                    => req("/interactions"),
   toggleInteraction: (recipe_id, type)   => JSON_POST("/interactions/toggle", { recipe_id, type }),

@@ -71,6 +71,14 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   const [genPills, setGenPills] = useState([]);
   const [genLoading, setGenLoading] = useState(false);
 
+  // Guest generation limit — 2 free per session, tracked in localStorage
+  const [genCount, setGenCount]       = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
+  const [genLimitHit, setGenLimitHit] = useState(false);
+
+  // Save-to-profile state
+  const [genSaved, setGenSaved]   = useState(false);
+  const [genSaving, setGenSaving] = useState(false);
+
   const [cuisine, setCuisine]       = useState("");
   const [course, setCourse]         = useState("");
   const [page, setPage]             = useState(1);
@@ -170,12 +178,18 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   }
 
   async function handleGenerate() {
+    // Enforce guest generation limit
+    if (!user && genCount >= 2) {
+      setGenLimitHit(true);
+      return;
+    }
+
     let ingredients = [...genPills];
     const context = genText.trim();
     if (!ingredients.length && !context) {
       setError("Describe what you have or add some ingredients."); return;
     }
-    setGenRecipe(null); setGenLoading(true); setError("");
+    setGenRecipe(null); setGenSaved(false); setGenLoading(true); setError("");
     // NLP extraction if user typed plain text and no pills yet
     if (context && !ingredients.length) {
       try {
@@ -185,17 +199,36 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
       } catch {}
     }
     if (!ingredients.length) {
-      setError("Couldn't extract ingredients — try listing them more specifically.");
+      setError("Could you describe a bit more what you'd like to cook?");
       setGenLoading(false); return;
     }
     setGenerating(true);
     try {
       const data = await api.aiGenerate(ingredients, context);
       setGenRecipe(data.recipe);
+      // Increment guest counter on success
+      if (!user) {
+        const next = genCount + 1;
+        setGenCount(next);
+        localStorage.setItem('cs_gen_count', String(next));
+      }
     } catch (e) {
       setError(e.message || "Failed to generate recipe.");
     } finally {
       setGenerating(false); setGenLoading(false);
+    }
+  }
+
+  async function handleSaveRecipe() {
+    if (!user || !genRecipe) return;
+    setGenSaving(true);
+    try {
+      await api.saveGeneratedRecipe(genRecipe);
+      setGenSaved(true);
+    } catch (e) {
+      setError(e.message || "Failed to save recipe.");
+    } finally {
+      setGenSaving(false);
     }
   }
 
@@ -362,6 +395,16 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
               ✨ Not sure what to cook? Use CookSmart AI
             </button>
+          ) : genLimitHit ? (
+            <div className="gen-limit-box">
+              <p>You've used your 2 free generations. Sign in to keep building your plate.</p>
+              <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
+                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setGenRecipe(null); setError(""); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="ai-gen-box">
               <textarea
@@ -373,12 +416,18 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                 rows={3}
                 autoFocus
               />
+              {!user && (
+                <p className="gen-guest-note">
+                  {genCount === 0 ? "2 free generations available — sign in for unlimited." :
+                   genCount === 1 ? "1 free generation left — sign in for unlimited." : null}
+                </p>
+              )}
               <div className="ai-gen-actions">
                 <button className="search-btn" onClick={handleGenerate}
                   disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
                   {generating ? "Generating…" : genLoading ? "Reading ingredients…" : "Build my dish"}
                 </button>
-                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); }}>
+                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
                   Cancel
                 </button>
               </div>
@@ -437,6 +486,26 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             {genRecipe.tips && (
               <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>
             )}
+            {genRecipe.health_tip && (
+              <div className="gen-health-tip">
+                <span className="gen-health-icon">🌿</span>
+                <div>
+                  <strong>Health Tip</strong>
+                  <p>{genRecipe.health_tip}</p>
+                </div>
+              </div>
+            )}
+            <div className="gen-save-bar">
+              <button
+                className={`gen-save-btn${genSaved ? " saved" : ""}`}
+                onClick={user ? handleSaveRecipe : undefined}
+                disabled={!user || genSaving || genSaved}
+                title={!user ? "Sign in to save this recipe" : undefined}
+              >
+                {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
+              </button>
+              {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
+            </div>
           </div>
         )}
 

@@ -48,8 +48,9 @@ def _rule_extract(text):
 
 def _llm_extract(text):
     """
-    Use Groq to extract ingredient names from natural language.
-    Returns a list of clean, short ingredient names.
+    Use Groq to extract food-related terms from natural language.
+    Returns a list of ingredient/food names. Works on both simple lists
+    and full-sentence descriptions (including health context).
     """
     api_key = os.getenv('GROQ_API_KEY', '')
     if not api_key:
@@ -57,13 +58,21 @@ def _llm_extract(text):
 
     model = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')
     prompt = (
-        "Extract food ingredient names from the text below.\n"
+        "Extract food ingredients, herbs, drinks, or food items mentioned in the text below.\n"
         "Rules:\n"
-        "- Use short, simple names only (e.g. 'chicken', not 'boneless chicken breast')\n"
-        "- Remove quantities, adjectives, and preparation words\n"
+        "- Include all food items: ingredients, beverages, herbs, spices, teas\n"
+        "- Use short names (e.g. 'lemon grass', 'ginger', 'green tea')\n"
+        "- Skip non-food words (e.g. 'diabetes', 'serving', 'quantities')\n"
+        "- Remove quantities and adjectives but keep the food name\n"
         "- Return ONLY a JSON array of strings. No markdown, no explanation.\n\n"
         f"Text: \"{text}\"\n\n"
-        "Example output: [\"chicken\", \"tomatoes\", \"garlic\"]"
+        "Examples:\n"
+        "  Input: \"I have chicken, tomatoes and garlic\"\n"
+        "  Output: [\"chicken\", \"tomatoes\", \"garlic\"]\n\n"
+        "  Input: \"I have diabetes and I want lemon grass tea with very little sugar\"\n"
+        "  Output: [\"lemon grass\", \"sugar\"]\n\n"
+        "  Input: \"Make me ginger and mint tea for 2 people\"\n"
+        "  Output: [\"ginger\", \"mint\"]"
     )
     payload = {
         'model': model,
@@ -153,8 +162,13 @@ def extract_ingredients():
     # ── Stage 2: normalise against DB ────────────────────────────────────────
     matched, unmatched = _db_match(candidates)
 
+    # When nothing matched the DB (e.g. "lemon grass tea"), return the raw
+    # candidates so the frontend can still proceed to /ai/generate with the
+    # full context. The AI handles novel/unlisted ingredients fine.
+    ingredients_out = matched if matched else unmatched
+
     return jsonify({
-        'ingredients': matched,
-        'unmatched':   unmatched,   # ingredients typed but not found in DB
+        'ingredients': ingredients_out,
+        'unmatched':   unmatched,
         'method':      method,
     })

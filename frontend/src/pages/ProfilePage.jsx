@@ -70,6 +70,19 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [myLoading, setMyLoading]   = useState(false);
   const [clearingHistory, setClearingHistory] = useState(false);
 
+  // ── My Generated Recipes ───────────────────────────────────────────────────
+  const [genRecipes, setGenRecipes]         = useState([]);
+  const [genRecipesLoading, setGenRecipesLoading] = useState(false);
+
+  // Load generated recipes on mount
+  useEffect(() => {
+    setGenRecipesLoading(true);
+    api.getGeneratedRecipes()
+      .then(data => setGenRecipes(data.recipes || []))
+      .catch(() => setGenRecipes([]))
+      .finally(() => setGenRecipesLoading(false));
+  }, []);
+
   // Load My Recipes when tab changes
   useEffect(() => {
     setMyLoading(true);
@@ -226,6 +239,35 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
             </button>
           </form>
         )}
+
+        {/* ── My Generated Recipes ── */}
+        <div className="my-gen-section">
+          <h2 className="profile-section-title">My Generated Recipes</h2>
+          <p className="profile-section-desc">Recipes you created with CookSmart AI and saved to your profile.</p>
+          {genRecipesLoading ? (
+            <div className="state-center" style={{ padding: "2rem" }}><div className="spinner" /></div>
+          ) : genRecipes.length === 0 ? (
+            <div className="my-recipes-empty">
+              No generated recipes saved yet. Use CookSmart AI on the home page to create your first one!
+            </div>
+          ) : (
+            <div className="my-gen-list">
+              {genRecipes.map(r => (
+                <div key={r.id} className="my-gen-row">
+                  <div className="my-gen-info">
+                    <span className="my-recipe-name">{r.dish_name}</span>
+                    {r.local_name && <span className="my-recipe-local">{r.local_name}</span>}
+                  </div>
+                  <div className="my-recipe-meta">
+                    {r.cuisine      && <span className="meta-chip cuisine" style={{ fontSize: ".75rem" }}>{r.cuisine}</span>}
+                    {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem" }}>⏱ {r.cooking_time}</span>}
+                    {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem" }}>👥 {r.servings}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── My Recipes ── */}
         <div className="my-recipes-section">

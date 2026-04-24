@@ -257,35 +257,54 @@ def ai_generate():
     if not ingredients:
         return jsonify({'error': 'Please provide at least 1 ingredient.'}), 400
 
-    context_line = (
-        f"The user described what they want as: \"{context}\"\n"
-        f"Honour this intent — if they named a specific dish (e.g. 'fried eggs', 'stew'), make THAT dish.\n\n"
-    ) if context else ""
+    # Build a context block from the full user description if provided.
+    # This carries health conditions, serving size, quantity preferences, etc.
+    if context:
+        context_line = (
+            f"FULL USER REQUEST (read carefully — honour every detail):\n"
+            f"\"{context}\"\n\n"
+            f"From this request extract and respect:\n"
+            f"- Any health condition (e.g. diabetes → use low-GI, low-sugar ingredients; "
+            f"hypertension → reduce salt; etc.)\n"
+            f"- Serving size if mentioned (e.g. '1 serving', 'for 2 people')\n"
+            f"- Quantity preferences (e.g. 'very little sugar', 'extra ginger')\n"
+            f"- The specific dish or drink requested (e.g. 'lemon grass tea', 'chicken stew')\n\n"
+        )
+    else:
+        context_line = ""
 
     prompt = (
-        f"You are a recipe assistant. Generate ONE recipe from the user's ingredients.\n\n"
+        f"You are CookSmart, a recipe assistant specialising in African and Ugandan cuisine.\n"
+        f"Generate ONE recipe based on the user's request below.\n\n"
         f"{context_line}"
-        f"User's ingredients: {', '.join(ingredients)}\n\n"
+        f"Ingredients mentioned: {', '.join(ingredients)}\n\n"
         f"STRICT RULES — follow every one without exception:\n"
-        f"1. Use ONLY the ingredients the user provided. Do NOT add anything they did not mention.\n"
-        f"   Never add matoke/matooke, chapati, posho, or any staple unless it is explicitly in the list.\n"
-        f"2. The dish_name must directly reflect what these ingredients actually make. Do not rename or reimagine it.\n"
-        f"   If the user described a specific dish (e.g. 'fried eggs'), use that exact dish as dish_name.\n"
-        f"3. Only set local_name to a real, well-known local name (e.g. Kikomando, Rolex, Luwombo) if you are\n"
-        f"   100% certain it matches this exact dish. If in any doubt, set local_name to null.\n"
-        f"4. Do not add filler ingredients to make the dish seem more 'African'. Accuracy is authenticity.\n"
-        f"5. If the ingredients only make a simple dish, return that simple dish. Do not over-complicate.\n\n"
+        f"1. If the user described a full request (drink, dish, health condition), honour that "
+        f"intent completely — the description above is the primary guide, ingredients are secondary.\n"
+        f"2. Adjust ingredients to suit any health condition mentioned. For diabetes: use minimal "
+        f"sugar or sugar substitutes, low-GI options. Do not add high-sugar ingredients.\n"
+        f"3. Respect the requested serving size. Set 'servings' to exactly what was asked.\n"
+        f"4. The dish_name must reflect what is actually being made (e.g. 'Lemon Grass Tea').\n"
+        f"5. Only set local_name to a verified local name you are 100% certain of. If in doubt, "
+        f"set local_name to null.\n"
+        f"6. Do NOT add matooke, chapati, posho, or any staple unless explicitly mentioned.\n"
+        f"7. Do not over-complicate a simple dish or drink.\n"
+        f"8. Always include a health_tip: 2-3 warm, friendly sentences covering who this dish "
+        f"is good for (energy, digestion, etc.), one honest caution if relevant (e.g. high in "
+        f"carbs, watch the salt), and one practical suggestion to make it healthier. "
+        f"No milligrams, no lab numbers. Speak like a knowledgeable friend.\n\n"
         f"Respond ONLY with a valid JSON object — no markdown, no extra text:\n"
         f'{{\n'
-        f'  "dish_name": "English name that matches exactly what these ingredients make",\n'
+        f'  "dish_name": "Name of the dish or drink being made",\n'
         f'  "local_name": "Verified local name or null",\n'
         f'  "cuisine": "e.g. Ugandan, East African, or most accurate label",\n'
-        f'  "cooking_time": "e.g. 30 minutes",\n'
-        f'  "servings": "e.g. 2 people",\n'
-        f'  "description": "Two honest sentences about this specific dish.",\n'
+        f'  "cooking_time": "e.g. 10 minutes",\n'
+        f'  "servings": "e.g. 1 serving",\n'
+        f'  "description": "Two honest sentences about this dish, mentioning any health benefit.",\n'
         f'  "ingredients": [{{"item": "name", "quantity": "amount + unit"}}],\n'
         f'  "steps": ["Step 1: ...", "Step 2: ..."],\n'
-        f'  "tips": "One practical tip for this specific dish."\n'
+        f'  "tips": "One practical tip, especially relevant to any health condition mentioned.",\n'
+        f'  "health_tip": "2-3 warm friendly sentences: who this is good for, one caution if relevant, one tip to make it healthier."\n'
         f'}}'
     )
 
