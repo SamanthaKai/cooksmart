@@ -55,7 +55,7 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 /* ── Hero ── */
 .hero {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: 4rem 2rem 3rem;
   text-align: center;
   color: var(--white);
@@ -156,8 +156,9 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
-  overflow: hidden;
-  z-index: 200;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
   animation: fadeDown .15s ease;
 }
 @keyframes fadeDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
@@ -237,8 +238,9 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
-  z-index: 200;
-  overflow: hidden;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
 }
 .ing-suggest-item {
   padding: .6rem 1rem;

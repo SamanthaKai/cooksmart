@@ -43,6 +43,9 @@ def suggest():
     Returns up to 8 recipe name suggestions as the user types.
     Uses pg_trgm similarity — very fast (~5ms).
     Minimum 2 characters required.
+
+    Word-boundary ILIKE patterns prevent 'tea' from matching 'Steak':
+      exact word | starts word | ends word | mid-word
     """
     q = request.args.get('q', '').strip()
     if len(q) < 2:
@@ -52,15 +55,23 @@ def suggest():
         """
         SELECT id, name, local_name, cuisine_type, course
         FROM recipes
-        WHERE name ILIKE %s
+        WHERE name ILIKE %s OR name ILIKE %s OR name ILIKE %s OR name ILIKE %s
            OR local_name ILIKE %s
-           OR similarity(name, %s) > 0.15
+           OR similarity(name, %s) > 0.3
         ORDER BY
-            CASE WHEN name ILIKE %s THEN 0 ELSE 1 END,
+            CASE
+                WHEN name ILIKE %s THEN 0
+                WHEN name ILIKE %s THEN 1
+                ELSE 2
+            END,
             similarity(name, %s) DESC
         LIMIT 8
         """,
-        (f'%{q}%', f'%{q}%', q, f'{q}%', q)
+        (q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name match
+         f'%{q}%',                               # local_name substring (short names)
+         q,                                      # similarity
+         q, f'{q}%',                             # ORDER BY priority
+         q)
     )
     return jsonify([
         {'id': r['id'], 'name': r['name'], 'local_name': r['local_name'],
@@ -95,10 +106,24 @@ def search():
     params     = []
 
     if q:
+        # Word-boundary patterns stop 'tea' matching 'Steak'.
+        # Tags join lets 'roasted meat' surface recipes tagged with those words (e.g. Muchomo).
         conditions.append(
-            "(r.name ILIKE %s OR r.local_name ILIKE %s OR similarity(r.name, %s) > 0.15)"
+            """(
+                r.name ILIKE %s OR r.name ILIKE %s OR r.name ILIKE %s OR r.name ILIKE %s
+                OR r.local_name ILIKE %s
+                OR r.description ILIKE %s
+                OR EXISTS (SELECT 1 FROM tags t WHERE t.recipe_id = r.id AND t.tag ILIKE %s)
+                OR similarity(r.name, %s) > 0.3
+            )"""
         )
-        params.extend([f'%{q}%', f'%{q}%', q])
+        params.extend([
+            q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name
+            f'%{q}%',                               # local_name
+            f'%{q}%',                               # description
+            f'%{q}%',                               # tags
+            q,                                      # similarity
+        ])
 
     if cuisine:
         conditions.append("r.cuisine_type = %s")

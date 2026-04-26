@@ -112,7 +112,19 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   useEffect(() => {
     if (mode !== "name" || query.length < 2) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
-      try { setSuggestions(await api.suggest(query)); } catch {}
+      try {
+        const raw = await api.suggest(query);
+        const q = query.toLowerCase();
+        // Client-side word-boundary filter: 'tea' must start or follow a space
+        // in the name — prevents 'Steamed Yams' matching because 's-t-e-a-med'
+        // contains the substring 'tea' in the middle of a word.
+        setSuggestions(
+          raw.filter(s => {
+            const name = s.name.toLowerCase();
+            return name.startsWith(q) || name.includes(' ' + q);
+          })
+        );
+      } catch {}
     }, 250);
     return () => clearTimeout(t);
   }, [query, mode]);
@@ -329,7 +341,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
 
         {/* Name search */}
         {mode === "name" && (
-          <div ref={suggestRef}>
+          <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
             <form className="search-wrap" onSubmit={handleNameSearch}>
               <span className="search-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

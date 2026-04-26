@@ -35,45 +35,64 @@ def search_by_ingredients():
     if len(ingredients) < 2:
         return jsonify({'error': 'Please provide at least 2 ingredients.'}), 400
 
-    # Build a query that:
-    #  1. Finds recipes containing ANY of the supplied ingredients
-    #  2. Ranks by how many they contain (most matches first)
-    #  3. Filters to only recipes that have ALL of them (strict mode)
-    #     — we also return partial matches ranked lower for the AI to use
-
-    placeholders = ', '.join(['%s'] * len(ingredients))
+    n            = len(ingredients)
     like_clauses = ' OR '.join([f"i.name ILIKE %s" for _ in ingredients])
     like_params  = [f'%{ing}%' for ing in ingredients]
+
+    # CASE WHEN maps each ingredient row to the index of the search term it satisfies.
+    # COUNT(DISTINCT CASE ... END) therefore counts how many distinct SEARCH TERMS were
+    # matched — not how many ingredient rows matched. This prevents a recipe with two rows
+    # that both match the same search term (e.g. 'tomato paste' + 'cherry tomato' for the
+    # search term 'tomato') from being falsely counted as two different term matches.
+    case_parts  = ' '.join([f"WHEN i.name ILIKE %s THEN {idx}" for idx, _ in enumerate(ingredients)])
+    case_params = [f'%{ing}%' for ing in ingredients]
 
     cuisine_filter = "AND r.cuisine_type = %s" if cuisine else ""
     cuisine_param  = [cuisine] if cuisine else []
 
-    rows = query(
-        f"""
-        SELECT
-            r.id, r.name, r.local_name, r.cuisine_type, r.course,
-            r.community, r.description, r.prep_time, r.cook_time, r.servings,
-            v.ingredient_list, v.ingredient_array,
-            COUNT(DISTINCT i.id) AS match_count,
-            {len(ingredients)} AS requested_count
-        FROM recipes r
-        JOIN recipe_with_ingredients v  ON v.id = r.id
-        JOIN recipe_ingredients ri      ON ri.recipe_id = r.id
-        JOIN ingredients i              ON i.id = ri.ingredient_id
-        WHERE ({like_clauses})
-        {cuisine_filter}
-        GROUP BY r.id, r.name, r.local_name, r.cuisine_type, r.course,
-                 r.community, r.description, r.prep_time, r.cook_time, r.servings,
-                 v.ingredient_list, v.ingredient_array
-        ORDER BY match_count DESC, r.name
-        LIMIT %s OFFSET %s
-        """,
-        like_params + cuisine_param + [per_page, offset]
+    # Shared CTE that computes match_count correctly for both exact and partial queries.
+    base_cte = f"""
+        WITH matched AS (
+            SELECT
+                r.id, r.name, r.local_name, r.cuisine_type, r.course,
+                r.community, r.description, r.prep_time, r.cook_time, r.servings,
+                v.ingredient_list, v.ingredient_array,
+                COUNT(DISTINCT CASE {case_parts} END) AS match_count
+            FROM recipes r
+            JOIN recipe_with_ingredients v  ON v.id = r.id
+            JOIN recipe_ingredients ri      ON ri.recipe_id = r.id
+            JOIN ingredients i              ON i.id = ri.ingredient_id
+            WHERE ({like_clauses})
+            {cuisine_filter}
+            GROUP BY r.id, r.name, r.local_name, r.cuisine_type, r.course,
+                     r.community, r.description, r.prep_time, r.cook_time, r.servings,
+                     v.ingredient_list, v.ingredient_array
+        )
+    """
+    # Params: case_params (CASE WHEN) + like_params (WHERE) + cuisine
+    cte_params = case_params + like_params + cuisine_param
+
+    # Exact matches: every supplied ingredient is present in the recipe.
+    exact_rows = query(
+        base_cte + " SELECT * FROM matched WHERE match_count >= %s ORDER BY name LIMIT %s OFFSET %s",
+        cte_params + [n, per_page, offset]
     )
 
-    results = []
-    for r in rows:
-        results.append({
+    # Partial matches: at least one ingredient present but not all (capped at 6).
+    partial_rows = query(
+        base_cte + " SELECT * FROM matched WHERE match_count > 0 AND match_count < %s ORDER BY match_count DESC, name LIMIT 6",
+        cte_params + [n]
+    )
+
+    # Total exact count (for pagination metadata).
+    count_row = query(
+        base_cte + " SELECT COUNT(*) AS total FROM matched WHERE match_count >= %s",
+        cte_params + [n], many=False
+    )
+    total_exact = count_row['total'] if count_row else 0
+
+    def _to_dict(r, is_exact):
+        return {
             'id':              r['id'],
             'name':            r['name'],
             'local_name':      r['local_name'],
@@ -86,19 +105,15 @@ def search_by_ingredients():
             'servings':        r['servings'],
             'ingredient_list': r['ingredient_list'],
             'match_count':     int(r['match_count']),
-            'requested_count': int(r['requested_count']),
-            'is_exact_match':  r['match_count'] >= r['requested_count'],
-        })
-
-    # Split into exact matches and partial matches
-    exact   = [r for r in results if r['is_exact_match']]
-    partial = [r for r in results if not r['is_exact_match']]
+            'requested_count': n,
+            'is_exact_match':  is_exact,
+        }
 
     return jsonify({
         'ingredients_searched': ingredients,
-        'exact_matches':        exact,
-        'partial_matches':      partial[:6],   # top 6 partials for "you might also like"
-        'total_exact':          len(exact),
+        'exact_matches':        [_to_dict(r, True)  for r in exact_rows],
+        'partial_matches':      [_to_dict(r, False) for r in partial_rows],
+        'total_exact':          total_exact,
     })
 
 
