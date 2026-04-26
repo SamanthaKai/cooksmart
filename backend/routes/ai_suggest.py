@@ -281,30 +281,34 @@ def ai_generate():
         f"{context_line}"
         f"Ingredients mentioned: {', '.join(ingredients)}\n\n"
         f"STRICT RULES — follow every one without exception:\n"
-        f"1. VAGUE OR NON-FOOD INPUT: If the user's request is vague, abstract, or does not "
-        f"describe food (e.g. 'love', 'everything', 'I don't know', 'anything'), do NOT generate "
-        f"a recipe. Instead return ONLY this JSON and nothing else: "
-        f'{{ "clarify": true, "message": "I\'m not sure what you\'d like to cook. Could you tell me what ingredients you have, or describe the kind of meal you want?" }}'
-        f"\n"
-        f"2. REAL DISHES ONLY: The dish_name MUST be a real, known African or Ugandan dish. "
+        f"1. NO FOOD WORDS: If the user's input contains no food-related words at all "
+        f"(e.g. 'love', 'everything', 'I don't know', 'anything', abstract or emotional words), "
+        f"do NOT generate a recipe. Return ONLY this JSON and nothing else:\n"
+        f'   {{"clarify": true, "message": "I\'m not sure what you\'d like to cook! Could you tell me what ingredients you have, or describe the kind of meal you want?"}}\n'
+        f"2. TOO BROAD: If the user's input is a very broad food category with no specific dish, "
+        f"ingredient, health condition, or serving detail "
+        f"(e.g. 'ugandan food', 'african food', 'something to eat', 'any food', 'food'), "
+        f"do NOT generate a recipe. Return ONLY this JSON and nothing else:\n"
+        f'   {{"clarify": true, "message": "What kind of meal are you looking for? A main dish, snack, or drink? And do you have any ingredients in mind?"}}\n'
+        f"3. REAL DISHES ONLY: The dish_name MUST be a real, known African or Ugandan dish. "
         f"Do not invent dish names. If you are not confident the dish name exists, use a generic "
         f"accurate name like 'Ugandan Bean Stew' or 'Matooke with Groundnut Sauce'.\n"
-        f"3. NO DEFAULT TEA: NEVER default to Lemon Grass Tea or any tea. Only generate a tea or "
+        f"4. NO DEFAULT TEA: NEVER default to Lemon Grass Tea or any tea. Only generate a tea or "
         f"drink if the user explicitly asks for tea, a drink, or names a specific tea.\n"
-        f"4. HEALTH CONDITIONS → REAL DISH: If the user mentions a health condition (diabetes, "
+        f"5. HEALTH CONDITIONS → REAL DISH: If the user mentions a health condition (diabetes, "
         f"high blood pressure, pregnancy, weight gain, vegetarian) but does NOT explicitly ask for "
         f"a drink or tea, generate a real food dish — not a tea or beverage. Adjust the dish "
         f"ingredients to suit the condition (e.g. diabetes → low-GI, low-sugar; hypertension → "
         f"reduce salt; pregnancy → iron-rich; weight gain → calorie-dense). Mention the adjustment "
         f"in the health_tip.\n"
-        f"5. If the user described a full request (dish, health condition, serving size), honour "
+        f"6. If the user described a full request (dish, health condition, serving size), honour "
         f"that intent completely — the description above is the primary guide, ingredients are secondary.\n"
-        f"6. Respect the requested serving size. Set 'servings' to exactly what was asked.\n"
-        f"7. Only set local_name to a verified local name you are 100% certain of. If in doubt, "
+        f"7. Respect the requested serving size. Set 'servings' to exactly what was asked.\n"
+        f"8. Only set local_name to a verified local name you are 100% certain of. If in doubt, "
         f"set local_name to null.\n"
-        f"8. Do NOT add matooke, chapati, posho, or any staple unless explicitly mentioned.\n"
-        f"9. Do not over-complicate a simple dish or drink.\n"
-        f"10. Always include a health_tip: 2-3 warm, friendly sentences covering who this dish "
+        f"9. Do NOT add matooke, chapati, posho, or any staple unless explicitly mentioned.\n"
+        f"10. Do not over-complicate a simple dish or drink.\n"
+        f"11. Always include a health_tip: 2-3 warm, friendly sentences covering who this dish "
         f"is good for (energy, digestion, etc.), one honest caution if relevant (e.g. high in "
         f"carbs, watch the salt), and one practical suggestion to make it healthier. "
         f"No milligrams, no lab numbers. Speak like a knowledgeable friend.\n\n"
@@ -327,7 +331,7 @@ def ai_generate():
         recipe = _safe_json(call_llm([{"role": "user", "content": prompt}], max_tokens=1024))
 
         if recipe.get('clarify'):
-            return jsonify({'clarify': True, 'message': recipe.get('message', "I'm not sure what you'd like to cook. Could you tell me what ingredients you have, or describe the kind of meal you want?")}), 200
+            return jsonify({'clarify': True, 'message': recipe.get('message', "I'm not sure what you'd like to cook! Could you tell me what ingredients you have, or describe the kind of meal you want?")}), 200
 
         return jsonify({'recipe': recipe, 'ingredients_used': ingredients})
 

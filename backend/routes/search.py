@@ -7,10 +7,62 @@ GET /api/recipes/<id>                           (single recipe detail)
 GET /api/recipes                                (all recipes, paginated)
 """
 
+import re
+import os
+import json
+import httpx
 from flask import Blueprint, request, jsonify
 from db import query
 
 search_bp = Blueprint('search', __name__)
+
+
+def _groq_semantic_filter(q, results):
+    """
+    Post-filter search results with Groq to remove semantic false positives.
+    Groq understands that 'Muchomo' counts for 'roasted meat' even though the
+    name doesn't say it, and that 'Steamed Yams' does NOT count for 'tea'.
+    Only called when GROQ_API_KEY is set. Always falls back to unfiltered list.
+    """
+    api_key = os.getenv('GROQ_API_KEY', '')
+    if not api_key or not results:
+        return results
+
+    names = [r['name'] for r in results]
+    prompt = (
+        f'A user searched for: "{q}"\n'
+        f"From these recipe names, keep ONLY the ones that genuinely match "
+        f"the search intent. Use semantic knowledge of African and Ugandan cuisine:\n"
+        f"- 'tea' → keep only tea or herbal drink recipes; remove dishes like "
+        f"'Steamed Yams' even though 'steamed' contains the letters t-e-a\n"
+        f"- 'roasted meat' → keep grilled or roasted meat dishes like Muchomo "
+        f"or Nyama Choma even if their name doesn't say 'roasted meat'\n"
+        f"- When in doubt, keep the result\n"
+        f"Names to filter: {json.dumps(names)}\n"
+        f"Return ONLY a JSON array of the names to keep. No explanation, no markdown."
+    )
+    try:
+        r = httpx.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            json={
+                'model':       os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant'),
+                'messages':    [{'role': 'user', 'content': prompt}],
+                'max_tokens':  300,
+                'temperature': 0,
+            },
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type':  'application/json',
+            },
+            timeout=5,
+        )
+        raw = r.json()['choices'][0]['message']['content']
+        raw = raw.replace('```json', '').replace('```', '').strip()
+        keep = set(json.loads(raw))
+        filtered = [res for res in results if res['name'] in keep]
+        return filtered if filtered else results   # never return empty if Groq over-filters
+    except Exception:
+        return results                              # always fall back gracefully
 
 
 def recipe_row_to_dict(row):
@@ -51,12 +103,17 @@ def suggest():
     if len(q) < 2:
         return jsonify([])
 
+    # Regex for word-start prefix match on local_name:
+    # '\mmuc' matches 'Muchomo' (M at word boundary) but NOT 'steamed' for query 'tea'
+    # (because 't' in 'steamed' is NOT at a word boundary — it follows 's').
+    q_prefix_re = r'\m' + re.escape(q)
+
     rows = query(
         """
         SELECT id, name, local_name, cuisine_type, course
         FROM recipes
         WHERE name ILIKE %s OR name ILIKE %s OR name ILIKE %s OR name ILIKE %s
-           OR local_name ILIKE %s
+           OR local_name ~* %s
            OR similarity(name, %s) > 0.3
         ORDER BY
             CASE
@@ -67,10 +124,10 @@ def suggest():
             similarity(name, %s) DESC
         LIMIT 8
         """,
-        (q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name match
-         f'%{q}%',                               # local_name substring (short names)
-         q,                                      # similarity
-         q, f'{q}%',                             # ORDER BY priority
+        (q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name (ILIKE, uses index)
+         q_prefix_re,                             # local_name: word-start prefix (regex)
+         q,                                       # similarity
+         q, f'{q}%',                              # ORDER BY priority
          q)
     )
     return jsonify([
@@ -106,22 +163,28 @@ def search():
     params     = []
 
     if q:
-        # Word-boundary patterns stop 'tea' matching 'Steak'.
-        # Tags join lets 'roasted meat' surface recipes tagged with those words (e.g. Muchomo).
+        # name   → word-boundary ILIKE (uses trigram index, fast)
+        # local_name / description → PostgreSQL word-boundary regex ~*
+        #   \m = start-of-word, \M = end-of-word
+        #   '\mtea\M' matches standalone "Tea" but NOT "steamed" (t-e-a-m has no
+        #   word boundary before the 't' — it follows 's')
+        # tags   → plain substring ILIKE (tags are curated short phrases, safe)
+        q_word_re = r'\m' + re.escape(q) + r'\M'
+
         conditions.append(
             """(
                 r.name ILIKE %s OR r.name ILIKE %s OR r.name ILIKE %s OR r.name ILIKE %s
-                OR r.local_name ILIKE %s
-                OR r.description ILIKE %s
+                OR r.local_name ~* %s
+                OR r.description ~* %s
                 OR EXISTS (SELECT 1 FROM tags t WHERE t.recipe_id = r.id AND t.tag ILIKE %s)
                 OR similarity(r.name, %s) > 0.3
             )"""
         )
         params.extend([
-            q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name
-            f'%{q}%',                               # local_name
-            f'%{q}%',                               # description
-            f'%{q}%',                               # tags
+            q, f'{q} %', f'% {q}', f'% {q} %',   # word-boundary name (ILIKE)
+            q_word_re,                              # local_name: exact word (regex)
+            q_word_re,                              # description: exact word (regex)
+            f'%{q}%',                               # tags: substring (curated, safe)
             q,                                      # similarity
         ])
 
@@ -162,12 +225,20 @@ def search():
         params + order_params + [per_page, offset]
     )
 
+    results = [recipe_row_to_dict(r) for r in rows]
+
+    # Groq semantic post-filter: catches any false positives the SQL still lets through
+    # (e.g. a description coincidentally matching a substring). Only runs for short
+    # queries where ambiguity is likely; always falls back silently if Groq is down.
+    if q and len(q.split()) <= 3:
+        results = _groq_semantic_filter(q, results)
+
     return jsonify({
         'total':    total,
         'page':     page,
         'per_page': per_page,
         'pages':    (total + per_page - 1) // per_page,
-        'results':  [recipe_row_to_dict(r) for r in rows],
+        'results':  results,
     })
 
 

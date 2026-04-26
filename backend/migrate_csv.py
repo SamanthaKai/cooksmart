@@ -60,11 +60,18 @@ def build_tags(row):
     if c := clean(row.get('community')): tags.append(c.lower())
     course = clean(row.get('course')) or 'main'
     tags.extend(COURSE_TAGS.get(course, []))
-    desc = (clean(row.get('description')) or '').lower()
+    desc     = (clean(row.get('description')) or '').lower()
+    name_low = (clean(row.get('name'))        or '').lower()
     if any(w in desc for w in ['vegan','plant-based']): tags.append('vegan')
     if any(w in desc for w in ['quick','fast','easy']): tags.append('quick')
     if any(w in desc for w in ['festive','celebration']): tags.append('festive')
     if any(w in desc for w in ['spicy','chilli','chili']): tags.append('spicy')
+    _grill = any(w in desc or w in name_low for w in ['grill', 'roast', 'barbecue', 'bbq', 'braai', 'choma'])
+    _meat  = any(w in desc or w in name_low for w in ['meat', 'goat', 'beef', 'chicken', 'pork', 'lamb', 'fish'])
+    if _grill:
+        tags.append('grilled')
+    if _grill and _meat:
+        tags.append('roasted meat')
     return list(set(tags))
 
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
+import { downloadRecipePDF } from "../utils/downloadPDF";
 
 const DIETARY_OPTIONS = [
   { value: "vegetarian",  label: "Vegetarian" },
@@ -73,6 +74,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   // ── My Generated Recipes ───────────────────────────────────────────────────
   const [genRecipes, setGenRecipes]         = useState([]);
   const [genRecipesLoading, setGenRecipesLoading] = useState(false);
+  const [expandedGenId, setExpandedGenId]   = useState(null);
 
   // Load generated recipes on mount
   useEffect(() => {
@@ -252,19 +254,81 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
             </div>
           ) : (
             <div className="my-gen-list">
-              {genRecipes.map(r => (
-                <div key={r.id} className="my-gen-row">
-                  <div className="my-gen-info">
-                    <span className="my-recipe-name">{r.dish_name}</span>
-                    {r.local_name && <span className="my-recipe-local">{r.local_name}</span>}
+              {genRecipes.map(r => {
+                const isOpen = expandedGenId === r.id;
+                const ings   = Array.isArray(r.ingredients) ? r.ingredients : [];
+                const steps  = Array.isArray(r.steps)       ? r.steps       : [];
+                return (
+                  <div key={r.id} className={`my-gen-row${isOpen ? " my-gen-row--open" : ""}`}>
+                    {/* Header row — always visible, click to expand */}
+                    <button
+                      className="my-gen-header"
+                      onClick={() => setExpandedGenId(isOpen ? null : r.id)}
+                      aria-expanded={isOpen}
+                    >
+                      <div className="my-gen-info">
+                        <span className="my-recipe-name">{r.dish_name}</span>
+                        {r.local_name && <span className="my-recipe-local">{r.local_name}</span>}
+                      </div>
+                      <div className="my-gen-header-right">
+                        <div className="my-recipe-meta">
+                          {r.cuisine      && <span className="meta-chip cuisine" style={{ fontSize: ".75rem" }}>{r.cuisine}</span>}
+                          {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem" }}>⏱ {r.cooking_time}</span>}
+                          {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem" }}>👥 {r.servings}</span>}
+                        </div>
+                        <span className="my-gen-chevron">{isOpen ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+
+                    {/* Expanded body */}
+                    {isOpen && (
+                      <div className="my-gen-body">
+                        {/* Ingredients */}
+                        {ings.length > 0 && (
+                          <div className="my-gen-section">
+                            <h4 className="my-gen-section-title">Ingredients</h4>
+                            <ul className="my-gen-ing-list">
+                              {ings.map((ing, i) => (
+                                <li key={i} className="my-gen-ing-item">
+                                  <span className="my-gen-ing-name">{ing.item}</span>
+                                  {ing.quantity && <span className="my-gen-ing-qty">{ing.quantity}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Steps */}
+                        {steps.length > 0 && (
+                          <div className="my-gen-section">
+                            <h4 className="my-gen-section-title">Preparation</h4>
+                            <ol className="my-gen-steps-list">
+                              {steps.map((step, i) => (
+                                <li key={i}>{step}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+
+                        {/* Health tip */}
+                        {r.health_tip && (
+                          <div className="my-gen-health-tip">
+                            <strong>Health tip:</strong> {r.health_tip}
+                          </div>
+                        )}
+
+                        {/* Download button */}
+                        <button
+                          className="my-gen-download-btn"
+                          onClick={() => downloadRecipePDF(r, "ai")}
+                        >
+                          ⬇ Download PDF
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="my-recipe-meta">
-                    {r.cuisine      && <span className="meta-chip cuisine" style={{ fontSize: ".75rem" }}>{r.cuisine}</span>}
-                    {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem" }}>⏱ {r.cooking_time}</span>}
-                    {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem" }}>👥 {r.servings}</span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
