@@ -311,8 +311,46 @@ def ai_generate():
         f"11. Always include a health_tip: 2-3 warm, friendly sentences covering who this dish "
         f"is good for (energy, digestion, etc.), one honest caution if relevant (e.g. high in "
         f"carbs, watch the salt), and one practical suggestion to make it healthier. "
-        f"No milligrams, no lab numbers. Speak like a knowledgeable friend.\n\n"
-        f"Respond ONLY with a valid JSON object — no markdown, no extra text:\n"
+        f"No milligrams, no lab numbers. Speak like a knowledgeable friend.\n"
+        f"12. SPELLING — the correct spelling is always \"Matooke\". Never write \"Matoke\", "
+        f"\"Matokeo\", \"Matooko\", or any other variant. This rule applies everywhere in your "
+        f"response: dish_name, local_name, description, steps, tips, health_tip.\n"
+        f"13. SERVING SIZE — always scale ingredient quantities to match the number of people "
+        f"the user specifies. If the user says \"family of 3\" or \"for 3 people\", set "
+        f"\"servings\" to 3 and multiply all quantities accordingly. Never leave quantities "
+        f"at a single-serving default when a larger serving size was requested.\n"
+        f"14. ADDED INGREDIENTS — only add ingredients the user has not mentioned if they are "
+        f"essential cooking basics: oil, water, salt, or pepper. Do not add proteins, "
+        f"vegetables, or starches the user did not ask for.\n"
+        f"15. COMBINATION MEALS — if the user requests more than one component (e.g. a main dish "
+        f"AND a side dish, or food AND a drink), generate ALL requested components. Do NOT ignore "
+        f"part of the request. Return a JSON object with a \"sections\" array where every element "
+        f"is a full recipe object plus a \"label\" field. Use these label values exactly: "
+        f"\"Main\", \"Side\", or \"Drink\". Each section must contain all recipe fields "
+        f"(dish_name, local_name, cuisine, cooking_time, servings, description, ingredients, "
+        f"steps, tips, health_tip). For a single dish omit the sections array entirely and use "
+        f"the flat format shown below.\n"
+        f"16. NON-AFRICAN CUISINE — if the user explicitly requests a dish that belongs to a "
+        f"non-African cuisine and has no meaningful African equivalent (e.g. noodles, pasta, "
+        f"spaghetti, lasagne, pizza, sushi, ramen, tacos, burritos, pad thai, dumplings, "
+        f"gyoza, pho, kimchi, pierogi), do NOT generate that dish and do NOT silently replace "
+        f"it with a random African dish. Instead return ONLY this JSON and nothing else:\n"
+        f'   {{"clarify": true, "message": "CookSmart specialises in African and Ugandan cuisine. '
+        f"I couldn't find a match for that, but I can suggest something similar! "
+        f'Try asking for [relevant African alternative] instead."}}\n'
+        f"   Replace [relevant African alternative] with the most fitting suggestion:\n"
+        f"   - noodles / ramen / pho → 'Ugandan stir-fried vegetables with rice, or a light soup'\n"
+        f"   - pasta / spaghetti / lasagne → 'Ugandan groundnut pasta (noodles cooked in "
+        f"groundnut sauce), or rice with tomato stew'\n"
+        f"   - sushi / sashimi → 'Ugandan fried or grilled tilapia with rice'\n"
+        f"   - tacos / burritos → 'Ugandan rolex (egg and vegetable chapati wrap)'\n"
+        f"   - pizza → 'Ugandan pan-fried chapati with toppings, or mandazi'\n"
+        f"   - pad thai / stir-fry noodles → 'Ugandan stir-fried vegetables with rice'\n"
+        f"   - dumplings / gyoza / pierogi → 'Ugandan samosas or mandazi'\n"
+        f"   - kimchi / Korean food → 'East African fermented or spiced vegetable dish'\n"
+        f"   - any other non-African dish → choose the closest African equivalent.\n\n"
+        f"Respond ONLY with a valid JSON object — no markdown, no extra text.\n\n"
+        f"Single dish format:\n"
         f'{{\n'
         f'  "dish_name": "Name of a real, known dish being made",\n'
         f'  "local_name": "Verified local name or null",\n'
@@ -324,6 +362,25 @@ def ai_generate():
         f'  "steps": ["Step 1: ...", "Step 2: ..."],\n'
         f'  "tips": "One practical tip, especially relevant to any health condition mentioned.",\n'
         f'  "health_tip": "2-3 warm friendly sentences: who this is good for, one caution if relevant, one tip to make it healthier."\n'
+        f'}}\n\n'
+        f"Combination meal format:\n"
+        f'{{\n'
+        f'  "sections": [\n'
+        f'    {{\n'
+        f'      "label": "Main",\n'
+        f'      "dish_name": "...", "local_name": "...", "cuisine": "...",\n'
+        f'      "cooking_time": "...", "servings": "...", "description": "...",\n'
+        f'      "ingredients": [{{"item": "...", "quantity": "..."}}],\n'
+        f'      "steps": ["..."], "tips": "...", "health_tip": "..."\n'
+        f'    }},\n'
+        f'    {{\n'
+        f'      "label": "Side",\n'
+        f'      "dish_name": "...", "local_name": "...", "cuisine": "...",\n'
+        f'      "cooking_time": "...", "servings": "...", "description": "...",\n'
+        f'      "ingredients": [{{"item": "...", "quantity": "..."}}],\n'
+        f'      "steps": ["..."], "tips": "...", "health_tip": "..."\n'
+        f'    }}\n'
+        f'  ]\n'
         f'}}'
     )
 

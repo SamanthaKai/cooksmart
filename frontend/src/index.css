@@ -1639,6 +1639,52 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   color: var(--stone);
 }
 
+/* ── Download PDF button (AI gen panel) ── */
+.gen-dl-btn {
+  padding: .55rem 1.2rem;
+  background: var(--earth);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+}
+.gen-dl-btn:hover { background: var(--earth-dark); }
+
+/* ── Combo meal sections ── */
+.combo-section {
+  border-top: 2px solid var(--border);
+}
+.combo-section:first-of-type { border-top: none; }
+
+.combo-label {
+  display: inline-flex;
+  align-items: center;
+  margin: 1.4rem 2rem .2rem;
+  padding: .3rem .9rem;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.combo-label--main  { background: var(--earth);  color: var(--white); }
+.combo-label--side  { background: var(--green);  color: var(--white); }
+.combo-label--drink { background: #3a6b8a;        color: var(--white); }
+
+.combo-recipe-header { padding: .75rem 2rem 0; }
+.combo-dish-name {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+  font-weight: 700;
+  color: var(--dark);
+  margin: 0 0 .25rem;
+}
+.combo-desc { color: var(--stone); }
+
 /* ── Guest generation counter note ── */
 .gen-guest-note {
   font-size: .8rem;

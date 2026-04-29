@@ -75,9 +75,13 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   const [genCount, setGenCount]       = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
   const [genLimitHit, setGenLimitHit] = useState(false);
 
-  // Save-to-profile state
+  // Save-to-profile state — single recipe
   const [genSaved, setGenSaved]   = useState(false);
   const [genSaving, setGenSaving] = useState(false);
+
+  // Save-to-profile state — combo meal (indexed by section position)
+  const [genSectionSaved, setGenSectionSaved]   = useState([]);
+  const [genSectionSaving, setGenSectionSaving] = useState([]);
 
   const [cuisine, setCuisine]       = useState("");
   const [course, setCourse]         = useState("");
@@ -201,7 +205,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     if (!ingredients.length && !context) {
       setError("Describe what you have or add some ingredients."); return;
     }
-    setGenRecipe(null); setGenSaved(false); setGenLoading(true); setError("");
+    setGenRecipe(null); setGenSaved(false); setGenSectionSaved([]); setGenSectionSaving([]); setGenLoading(true); setError("");
     // NLP extraction if user typed plain text and no pills yet
     if (context && !ingredients.length) {
       try {
@@ -241,6 +245,19 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
       setError(e.message || "Failed to save recipe.");
     } finally {
       setGenSaving(false);
+    }
+  }
+
+  async function handleSaveSectionRecipe(sectionRecipe, idx) {
+    if (!user || !sectionRecipe) return;
+    setGenSectionSaving(prev => { const a = [...prev]; a[idx] = true; return a; });
+    try {
+      await api.saveGeneratedRecipe(sectionRecipe);
+      setGenSectionSaved(prev => { const a = [...prev]; a[idx] = true; return a; });
+    } catch (e) {
+      setError(e.message || "Failed to save recipe.");
+    } finally {
+      setGenSectionSaving(prev => { const a = [...prev]; a[idx] = false; return a; });
     }
   }
 
@@ -463,61 +480,145 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
 
         {genRecipe && (
           <div className="gen-panel">
-            <div className="gen-header">
-              <span className="ai-badge gen-badge">AI-Generated Recipe</span>
-              <h2 className="gen-title">{genRecipe.dish_name}</h2>
-              {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
-              <p className="gen-desc">{genRecipe.description}</p>
-              <div className="gen-meta">
-                {genRecipe.cuisine     && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
-                {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
-                {genRecipe.servings    && <span className="meta-chip">👥 {genRecipe.servings}</span>}
-              </div>
-            </div>
-            <div className="gen-body">
-              <div className="gen-section">
-                <h3>Ingredients</h3>
-                <ul className="gen-ing-list">
-                  {(genRecipe.ingredients || []).map((ing, i) => (
-                    <li key={i} className="gen-ing-item">
-                      <span className="gen-ing-name">{ing.item}</span>
-                      <span className="gen-ing-qty">{ing.quantity}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="gen-section">
-                <h3>Instructions</h3>
-                <ol className="gen-steps">
-                  {(genRecipe.steps || []).map((step, i) => (
-                    <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-            {genRecipe.tips && (
-              <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>
-            )}
-            {genRecipe.health_tip && (
-              <div className="gen-health-tip">
-                <span className="gen-health-icon">🌿</span>
-                <div>
-                  <strong>Health Tip</strong>
-                  <p>{genRecipe.health_tip}</p>
+            {genRecipe.sections ? (
+              /* ── Combo meal ── */
+              <>
+                <div className="gen-header">
+                  <span className="ai-badge gen-badge">AI-Generated Meal</span>
+                  <h2 className="gen-title">Combination Meal</h2>
+                  <p className="gen-desc">
+                    {genRecipe.sections.length} dishes generated based on your request.
+                  </p>
                 </div>
-              </div>
+
+                {genRecipe.sections.map((section, idx) => (
+                  <div key={idx} className="combo-section">
+                    <div className={`combo-label combo-label--${(section.label || "").toLowerCase()}`}>
+                      {section.label}
+                    </div>
+                    <div className="combo-recipe-header">
+                      <h3 className="combo-dish-name">{section.dish_name}</h3>
+                      {section.local_name && <p className="gen-local">{section.local_name}</p>}
+                      <p className="gen-desc combo-desc">{section.description}</p>
+                      <div className="gen-meta">
+                        {section.cuisine      && <span className="meta-chip cuisine">{section.cuisine}</span>}
+                        {section.cooking_time && <span className="meta-chip">⏱ {section.cooking_time}</span>}
+                        {section.servings     && <span className="meta-chip">👥 {section.servings}</span>}
+                      </div>
+                    </div>
+                    <div className="gen-body">
+                      <div className="gen-section">
+                        <h3>Ingredients</h3>
+                        <ul className="gen-ing-list">
+                          {(section.ingredients || []).map((ing, i) => (
+                            <li key={i} className="gen-ing-item">
+                              <span className="gen-ing-name">{ing.item}</span>
+                              <span className="gen-ing-qty">{ing.quantity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="gen-section">
+                        <h3>Instructions</h3>
+                        <ol className="gen-steps">
+                          {(section.steps || []).map((step, i) => (
+                            <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                    {section.tips && (
+                      <div className="gen-tips"><strong>Chef's tip:</strong> {section.tips}</div>
+                    )}
+                    {section.health_tip && (
+                      <div className="gen-health-tip">
+                        <span className="gen-health-icon">🌿</span>
+                        <div>
+                          <strong>Health Tip</strong>
+                          <p>{section.health_tip}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="gen-save-bar">
+                      <button
+                        className={`gen-save-btn${genSectionSaved[idx] ? " saved" : ""}`}
+                        onClick={user ? () => handleSaveSectionRecipe(section, idx) : undefined}
+                        disabled={!user || genSectionSaving[idx] || genSectionSaved[idx]}
+                        title={!user ? "Sign in to save this recipe" : undefined}
+                      >
+                        {genSectionSaved[idx] ? "✓ Saved!" : genSectionSaving[idx] ? "Saving…" : "Save to my profile"}
+                      </button>
+                      <button className="gen-dl-btn" onClick={() => downloadRecipePDF(section, "ai")}>
+                        ⬇ Download PDF
+                      </button>
+                      {!user && <span className="gen-save-hint">Sign in to save</span>}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              /* ── Single recipe ── */
+              <>
+                <div className="gen-header">
+                  <span className="ai-badge gen-badge">AI-Generated Recipe</span>
+                  <h2 className="gen-title">{genRecipe.dish_name}</h2>
+                  {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
+                  <p className="gen-desc">{genRecipe.description}</p>
+                  <div className="gen-meta">
+                    {genRecipe.cuisine      && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
+                    {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
+                    {genRecipe.servings     && <span className="meta-chip">👥 {genRecipe.servings}</span>}
+                  </div>
+                </div>
+                <div className="gen-body">
+                  <div className="gen-section">
+                    <h3>Ingredients</h3>
+                    <ul className="gen-ing-list">
+                      {(genRecipe.ingredients || []).map((ing, i) => (
+                        <li key={i} className="gen-ing-item">
+                          <span className="gen-ing-name">{ing.item}</span>
+                          <span className="gen-ing-qty">{ing.quantity}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="gen-section">
+                    <h3>Instructions</h3>
+                    <ol className="gen-steps">
+                      {(genRecipe.steps || []).map((step, i) => (
+                        <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+                {genRecipe.tips && (
+                  <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>
+                )}
+                {genRecipe.health_tip && (
+                  <div className="gen-health-tip">
+                    <span className="gen-health-icon">🌿</span>
+                    <div>
+                      <strong>Health Tip</strong>
+                      <p>{genRecipe.health_tip}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="gen-save-bar">
+                  <button
+                    className={`gen-save-btn${genSaved ? " saved" : ""}`}
+                    onClick={user ? handleSaveRecipe : undefined}
+                    disabled={!user || genSaving || genSaved}
+                    title={!user ? "Sign in to save this recipe" : undefined}
+                  >
+                    {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
+                  </button>
+                  <button className="gen-dl-btn" onClick={() => downloadRecipePDF(genRecipe, "ai")}>
+                    ⬇ Download PDF
+                  </button>
+                  {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
+                </div>
+              </>
             )}
-            <div className="gen-save-bar">
-              <button
-                className={`gen-save-btn${genSaved ? " saved" : ""}`}
-                onClick={user ? handleSaveRecipe : undefined}
-                disabled={!user || genSaving || genSaved}
-                title={!user ? "Sign in to save this recipe" : undefined}
-              >
-                {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
-              </button>
-              {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
-            </div>
           </div>
         )}
 
