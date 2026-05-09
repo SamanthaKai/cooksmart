@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import { downloadRecipePDF } from "../utils/downloadPDF";
+import ConfirmModal from "../components/ConfirmModal";
 
 const DIETARY_OPTIONS = [
   { value: "vegetarian",  label: "Vegetarian" },
@@ -77,6 +78,10 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [expandedGenId, setExpandedGenId]   = useState(null);
   const [deletingGenId, setDeletingGenId]   = useState(null);
 
+  // ── Confirm modals ─────────────────────────────────────────────────────────
+  const [deleteModal, setDeleteModal]       = useState({ open: false, id: null });
+  const [historyModal, setHistoryModal]     = useState(false);
+
   // Load generated recipes on mount
   useEffect(() => {
     setGenRecipesLoading(true);
@@ -97,8 +102,12 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
       .finally(() => setMyLoading(false));
   }, [myTab]);
 
-  async function handleClearHistory() {
-    if (!window.confirm("Clear all your viewing history?")) return;
+  function handleClearHistory() {
+    setHistoryModal(true);
+  }
+
+  async function confirmClearHistory() {
+    setHistoryModal(false);
     setClearingHistory(true);
     try {
       await api.clearHistory();
@@ -107,16 +116,21 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
     setClearingHistory(false);
   }
 
-  async function handleDeleteGen(e, id) {
+  function handleDeleteGen(e, id) {
     e.stopPropagation();
-    if (!window.confirm("Delete this recipe? This cannot be undone.")) return;
+    setDeleteModal({ open: true, id });
+  }
+
+  async function confirmDeleteGen() {
+    const id = deleteModal.id;
+    setDeleteModal({ open: false, id: null });
     setDeletingGenId(id);
     try {
       await api.deleteGeneratedRecipe(id);
       setGenRecipes(prev => prev.filter(r => r.id !== id));
       if (expandedGenId === id) setExpandedGenId(null);
     } catch {
-      // silently ignore — the recipe stays in the list if deletion fails
+      // silently ignore — recipe stays in list if deletion fails
     } finally {
       setDeletingGenId(null);
     }
@@ -420,6 +434,26 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
         </div>
 
       </div>
+
+      {/* ── Confirm: delete generated recipe ── */}
+      <ConfirmModal
+        open={deleteModal.open}
+        title="Delete Recipe?"
+        message="This recipe will be permanently removed from your profile. This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDeleteGen}
+        onCancel={() => setDeleteModal({ open: false, id: null })}
+      />
+
+      {/* ── Confirm: clear history ── */}
+      <ConfirmModal
+        open={historyModal}
+        title="Clear History?"
+        message="All your viewing history will be permanently removed. This cannot be undone."
+        confirmLabel="Clear History"
+        onConfirm={confirmClearHistory}
+        onCancel={() => setHistoryModal(false)}
+      />
     </div>
   );
 }
