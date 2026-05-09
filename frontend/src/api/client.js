@@ -61,8 +61,9 @@ export const api = {
   nlpExtract:  (text)        => JSON_POST("/nlp/extract",  { text }),
 
   // ── Generated Recipes ─────────────────────────────────────────────────────
-  saveGeneratedRecipe: (recipe) => JSON_POST("/generated-recipes", recipe),
-  getGeneratedRecipes: ()       => req("/generated-recipes"),
+  saveGeneratedRecipe:   (recipe) => JSON_POST("/generated-recipes", recipe),
+  getGeneratedRecipes:   ()       => req("/generated-recipes"),
+  deleteGeneratedRecipe: (id)     => req(`/generated-recipes/${id}`, { method: "DELETE" }),
 
   // ── Interactions ──────────────────────────────────────────────────────────
   getInteractions: ()                    => req("/interactions"),

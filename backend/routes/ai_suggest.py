@@ -68,6 +68,86 @@ def _safe_json(raw):
     return json.loads(raw)
 
 
+# ── Input validation ──────────────────────────────────────────────────────────
+
+# Non-African cuisine terms that trigger a redirect message
+_NON_AFRICAN_FOODS = {
+    'noodles', 'ramen', 'pho', 'pasta', 'spaghetti', 'lasagne', 'lasagna',
+    'pizza', 'sushi', 'sashimi', 'burger', 'hamburger',
+    'taco', 'tacos', 'burrito', 'burritos', 'pad thai',
+    'dumplings', 'gyoza', 'pierogi', 'kimchi',
+}
+
+# Single-word food signals: meal types, dietary contexts, ingredients, cooking words
+_FOOD_SIGNALS = {
+    'breakfast', 'lunch', 'dinner', 'supper', 'brunch', 'snack', 'meal',
+    'diabetic', 'diabetes', 'vegetarian', 'vegan', 'pregnant', 'pregnancy',
+    'hypertension', 'celiac', 'gluten', 'allergy', 'allergic', 'diet',
+    'healthy', 'weight', 'calorie', 'protein', 'vitamin',
+    'cook', 'recipe', 'eat', 'food', 'dish', 'ingredient', 'ingredients',
+    'hungry', 'prepare', 'serve', 'serving', 'portion',
+    'ugandan', 'african', 'kenyan', 'tanzanian', 'rwandan', 'cuisine',
+    'chicken', 'beef', 'pork', 'fish', 'tilapia', 'beans', 'rice',
+    'matooke', 'posho', 'chapati', 'groundnut', 'peanut', 'cassava',
+    'yam', 'plantain', 'banana', 'tomato', 'onion', 'garlic', 'ginger',
+    'pepper', 'salt', 'oil', 'milk', 'egg', 'eggs', 'flour', 'sugar',
+    'tea', 'coffee', 'juice', 'vegetable', 'vegetables', 'fruit', 'fruits',
+    'meat', 'spice', 'spices', 'herb', 'herbs', 'sauce', 'stew', 'soup',
+    'salad', 'bread', 'cake', 'biscuit', 'cookie', 'drink', 'beverage',
+    'lemon', 'lime', 'orange', 'mango', 'avocado', 'spinach', 'kale',
+    'cabbage', 'carrot', 'potato', 'pea', 'lentil', 'chickpea',
+    'lamb', 'goat', 'turkey', 'shrimp', 'prawn', 'butter', 'cream',
+    'cheese', 'yoghurt', 'yogurt', 'rolex', 'mandazi', 'pilau', 'biryani',
+    'samosa', 'okra', 'eggplant', 'aubergine', 'corn', 'maize', 'millet',
+    'sorghum', 'sesame', 'coconut', 'tamarind',
+}
+
+# Multi-word food signals (matched as substrings in the combined text)
+_MULTI_WORD_FOOD_SIGNALS = (
+    'sweet potato', 'spring roll', 'fried rice', 'stir fry',
+    'peanut butter', 'ground nut', 'ground beef',
+)
+
+_MSG_NO_FOOD = (
+    "I didn't quite catch that! Could you describe what you'd like to eat, "
+    "or tell me what ingredients you have? "
+    "For example: 'I have eggs and tomatoes' or "
+    "'Give me a Ugandan breakfast for 2 people'."
+)
+
+_MSG_NON_AFRICAN = (
+    "CookSmart specialises in African and Ugandan cuisine. "
+    "I don't have a recipe for that, but I can suggest something similar! "
+    "Try asking for a stir-fry with local vegetables, "
+    "or describe what kind of meal you're in the mood for."
+)
+
+
+def _validate_food_input(ingredients, context):
+    """
+    Pre-LLM guard for /ai/generate.
+    Returns a Flask response tuple to reject the request, or None if the input
+    is food-related and within African/Ugandan cuisine scope.
+    """
+    combined = ' '.join(ingredients + [context]).lower()
+
+    # Check for explicitly non-African cuisine items first
+    for item in _NON_AFRICAN_FOODS:
+        if item in combined:
+            return jsonify({'clarify': True, 'message': _MSG_NON_AFRICAN}), 200
+
+    # Require at least one food signal (single-word or multi-word)
+    words = set(combined.split())
+    has_signal = (
+        bool(words & _FOOD_SIGNALS)
+        or any(sig in combined for sig in _MULTI_WORD_FOOD_SIGNALS)
+    )
+    if not has_signal:
+        return jsonify({'clarify': True, 'message': _MSG_NO_FOOD}), 200
+
+    return None
+
+
 # ── /ai/suggest ───────────────────────────────────────────────────────────────
 
 @ai_bp.route('/ai/suggest', methods=['POST'])
@@ -274,6 +354,11 @@ def ai_generate():
         )
     else:
         context_line = ""
+
+    # Pre-LLM guard — reject non-food or non-African inputs without burning an API call
+    rejection = _validate_food_input(ingredients, context)
+    if rejection:
+        return rejection
 
     prompt = (
         f"You are CookSmart, a recipe assistant specialising in African and Ugandan cuisine.\n"

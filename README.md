@@ -1,12 +1,13 @@
 # 🍽️ CookSmart
 
-A modern, AI-powered recipe discovery app featuring authentic African and international cuisine. Search by ingredients, explore cuisines, and discover new recipes with smart AI suggestions.
+A modern, AI-powered recipe discovery app specialising in authentic African and Ugandan cuisine. Search by ingredients, explore dishes, and discover new recipes with smart AI suggestions — all rooted in African culinary traditions.
 
 ## ✨ Features
 
-- **Smart Ingredient Search**: Add ingredients and get AI-powered recipe suggestions
-- **Cuisine Exploration**: Browse African and international recipes
+- **Smart Ingredient Search**: Add ingredients and get AI-powered recipe suggestions rooted in African cuisine
+- **Cuisine Exploration**: Browse authentic African and Ugandan recipes
 - **Recipe Details**: Full recipes with ingredients, instructions, and serving suggestions
+- **Scoped AI**: The AI only generates African and Ugandan recipes — non-food or out-of-scope requests are caught early with helpful guidance
 - **Responsive Design**: Beautiful, mobile-friendly interface
 - **Fast Search**: Fuzzy search with autocomplete
 - **Image Gallery**: High-quality food photography
@@ -120,4 +121,6 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-**Made with ❤️ for food lovers worldwide**
+**Made with ❤️ for lovers of African and Ugandan food**
+
+> **AI Scope Note:** CookSmart's AI is trained on African and Ugandan cuisine. Requests for non-African dishes (e.g. pizza, sushi, pasta) will receive a friendly redirect to the nearest African equivalent. Inputs with no recognisable food context will prompt the user for clarification rather than generating a recipe.

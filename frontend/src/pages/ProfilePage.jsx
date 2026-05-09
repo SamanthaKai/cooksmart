@@ -75,6 +75,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [genRecipes, setGenRecipes]         = useState([]);
   const [genRecipesLoading, setGenRecipesLoading] = useState(false);
   const [expandedGenId, setExpandedGenId]   = useState(null);
+  const [deletingGenId, setDeletingGenId]   = useState(null);
 
   // Load generated recipes on mount
   useEffect(() => {
@@ -104,6 +105,21 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
       setMyRecipes([]);
     } catch {}
     setClearingHistory(false);
+  }
+
+  async function handleDeleteGen(e, id) {
+    e.stopPropagation();
+    if (!window.confirm("Delete this recipe? This cannot be undone.")) return;
+    setDeletingGenId(id);
+    try {
+      await api.deleteGeneratedRecipe(id);
+      setGenRecipes(prev => prev.filter(r => r.id !== id));
+      if (expandedGenId === id) setExpandedGenId(null);
+    } catch {
+      // silently ignore — the recipe stays in the list if deletion fails
+    } finally {
+      setDeletingGenId(null);
+    }
   }
 
   // Load current profile on mount
@@ -276,6 +292,15 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
                           {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem" }}>⏱ {r.cooking_time}</span>}
                           {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem" }}>👥 {r.servings}</span>}
                         </div>
+                        <button
+                          className="my-gen-delete-btn"
+                          onClick={(e) => handleDeleteGen(e, r.id)}
+                          disabled={deletingGenId === r.id}
+                          title="Delete this recipe"
+                          aria-label="Delete recipe"
+                        >
+                          {deletingGenId === r.id ? "…" : "🗑"}
+                        </button>
                         <span className="my-gen-chevron">{isOpen ? "▲" : "▼"}</span>
                       </div>
                     </button>

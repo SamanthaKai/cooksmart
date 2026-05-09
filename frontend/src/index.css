@@ -1771,6 +1771,28 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   font-size: .7rem;
   color: var(--stone);
 }
+.my-gen-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .95rem;
+  padding: .2rem .35rem;
+  border-radius: 6px;
+  opacity: .55;
+  transition: opacity .15s, background .15s;
+  flex-shrink: 0;
+}
+.my-gen-delete-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(192, 57, 43, .1);
+}
+.my-gen-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
 .my-gen-info {
   display: flex;
   flex-direction: column;

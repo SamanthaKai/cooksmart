@@ -1,8 +1,9 @@
 """
 CookSmart — Generated Recipes Routes
 
-POST /api/generated-recipes    Save a generated recipe to user's profile (auth required)
-GET  /api/generated-recipes    List user's saved generated recipes (auth required)
+POST   /api/generated-recipes             Save a generated recipe (auth required)
+GET    /api/generated-recipes             List user's saved generated recipes (auth required)
+DELETE /api/generated-recipes/<recipe_id> Delete one generated recipe (auth required, owner only)
 """
 
 import json
@@ -126,3 +127,24 @@ def list_generated_recipes():
         recipes.append(row)
 
     return jsonify({'recipes': recipes})
+
+
+@gen_recipes_bp.route('/generated-recipes/<int:recipe_id>', methods=['DELETE'])
+def delete_generated_recipe(recipe_id):
+    _ensure_table()
+    user_id = _get_user_id()
+    if not user_id:
+        return jsonify({'error': 'Authentication required.'}), 401
+
+    existing = query(
+        "SELECT id FROM generated_recipes WHERE id = %s AND user_id = %s",
+        (recipe_id, user_id), many=False
+    )
+    if not existing:
+        return jsonify({'error': 'Recipe not found or access denied.'}), 404
+
+    execute(
+        "DELETE FROM generated_recipes WHERE id = %s AND user_id = %s",
+        (recipe_id, user_id)
+    )
+    return jsonify({'message': 'Recipe deleted.'}), 200
