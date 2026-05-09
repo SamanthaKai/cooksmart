@@ -473,6 +473,31 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   overflow: hidden;
   flex: 1;
 }
+.card-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .45rem;
+}
+.card-flag {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 600;
+  padding: .12rem .42rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+  letter-spacing: .01em;
+}
+.card-flag--allergy {
+  background: #ffeaea;
+  color: #c0392b;
+  border: 1px solid #f5b7b1;
+}
+.card-flag--dietary {
+  background: #fff8e6;
+  color: #9a6200;
+  border: 1px solid #f0d080;
+}
 .card-footer {
   display: flex;
   align-items: center;

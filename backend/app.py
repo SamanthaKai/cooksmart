@@ -3,7 +3,7 @@ CookSmart Flask API — Entry Point
 """
 
 import os
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from db import get_db_pool
 from routes.search import search_bp
@@ -32,6 +32,15 @@ app.register_blueprint(profile_bp,     url_prefix='/api')
 app.register_blueprint(nlp_bp,          url_prefix='/api')
 app.register_blueprint(interactions_bp,   url_prefix='/api')
 app.register_blueprint(gen_recipes_bp,   url_prefix='/api')
+
+_USER_ROUTE_PREFIXES = ('/api/profile', '/api/generated-recipes', '/api/interactions', '/api/auth')
+
+@app.after_request
+def set_cache_headers(response):
+    if request.path.startswith(_USER_ROUTE_PREFIXES):
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
 
 @app.route('/api/health')
 def health():

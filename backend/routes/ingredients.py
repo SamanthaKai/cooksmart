@@ -8,6 +8,7 @@ GET  /api/ingredients/suggest?q= (ingredient auto-suggest)
 
 from flask import Blueprint, request, jsonify
 from db import query
+from routes.search import _get_request_profile, _compute_flags, _is_african, _user_allows_non_african
 
 ingredients_bp = Blueprint('ingredients', __name__)
 
@@ -91,8 +92,11 @@ def search_by_ingredients():
     )
     total_exact = count_row['total'] if count_row else 0
 
+    profile          = _get_request_profile()
+    allow_non_african = _user_allows_non_african(profile)
+
     def _to_dict(r, is_exact):
-        return {
+        d = {
             'id':              r['id'],
             'name':            r['name'],
             'local_name':      r['local_name'],
@@ -108,11 +112,38 @@ def search_by_ingredients():
             'requested_count': n,
             'is_exact_match':  is_exact,
         }
+        if profile:
+            flags = _compute_flags(
+                r['ingredient_list'] or '',
+                profile['dietary'],
+                profile['allergies'],
+            )
+            d['allergy_flags'] = flags['allergy_flags']
+            d['dietary_flags'] = flags['dietary_flags']
+        return d
+
+    # ── Cuisine filtering ─────────────────────────────────────────────────────
+    # Exact matches: return African results by default.
+    # If no African recipes match the ingredients at all, fall back to showing
+    # whatever did match rather than an empty screen.
+    if allow_non_african:
+        filtered_exact = list(exact_rows)
+    else:
+        african_exact  = [r for r in exact_rows if _is_african(r['cuisine_type'])]
+        filtered_exact = african_exact if african_exact else list(exact_rows)
+
+    # Partial matches ("You might also like"): strict African-only.
+    # If no African partial matches exist, show nothing — don't surface
+    # unrelated Western dishes as suggestions.
+    if allow_non_african:
+        filtered_partial = list(partial_rows)
+    else:
+        filtered_partial = [r for r in partial_rows if _is_african(r['cuisine_type'])]
 
     return jsonify({
         'ingredients_searched': ingredients,
-        'exact_matches':        [_to_dict(r, True)  for r in exact_rows],
-        'partial_matches':      [_to_dict(r, False) for r in partial_rows],
+        'exact_matches':        [_to_dict(r, True)  for r in filtered_exact],
+        'partial_matches':      [_to_dict(r, False) for r in filtered_partial],
         'total_exact':          total_exact,
     })
 

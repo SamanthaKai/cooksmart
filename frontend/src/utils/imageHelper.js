@@ -1,9 +1,16 @@
 const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || "";
 const BASE_URL = "https://api.unsplash.com/search/photos";
 
-// In-memory + sessionStorage cache (v3 key busts any old Unsplash-cached African URLs)
+// In-memory + sessionStorage cache (v4 busts stale Unsplash results for corrected recipes)
 const memCache = new Map();
-function sessionKey(id) { return `cs_img_v3_${id}`; }
+function sessionKey(id) { return `cs_img_v4_${id}`; }
+
+// Override Unsplash search queries for specific recipe IDs where the recipe name
+// gives poor Unsplash results.
+const QUERY_OVERRIDES = {
+  58: "crispy breaded chicken nuggets",
+  90: "french omelette eggs skillet",
+};
 
 // Throttle: max 3 concurrent Unsplash requests
 let _active = 0;
@@ -67,8 +74,9 @@ export async function getRecipeImage(recipe) {
   if (!UNSPLASH_KEY) return null;
 
   try {
+    const query = QUERY_OVERRIDES[recipe.id] ?? ((recipe.name || "") + " food");
     const res = await throttledFetch(
-      `${BASE_URL}?query=${encodeURIComponent((recipe.name || "") + " food")}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`
+      `${BASE_URL}?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`
     );
     if (!res.ok) return null;
     const data = await res.json();

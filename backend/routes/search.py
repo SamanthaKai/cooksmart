@@ -12,9 +12,131 @@ import os
 import json
 import httpx
 from flask import Blueprint, request, jsonify
+from itsdangerous import BadSignature, SignatureExpired
 from db import query
+from routes.auth import verify_token
 
 search_bp = Blueprint('search', __name__)
+
+
+# ── Profile-aware flag helpers ────────────────────────────────────────────────
+
+# Keywords that indicate a recipe contains an allergen.
+# Matched as whole words (plurals included) against the ingredient_list string.
+_ALLERGEN_KEYWORDS = {
+    'peanuts':   ['peanut', 'groundnut'],
+    'tree-nuts': ['almond', 'cashew', 'walnut', 'pistachio', 'macadamia', 'pecan', 'hazelnut'],
+    'dairy':     ['milk', 'butter', 'cream', 'cheese', 'yoghurt', 'yogurt', 'ghee'],
+    'eggs':      ['egg'],
+    'fish':      ['fish', 'tilapia', 'salmon', 'tuna', 'sardine', 'catfish', 'omena'],
+    'shellfish': ['shrimp', 'prawn', 'crab', 'lobster', 'oyster'],
+    'wheat':     ['wheat', 'flour', 'chapati', 'mandazi', 'bread'],
+    'soy':       ['soy', 'tofu'],
+}
+
+# Keywords that indicate a recipe violates a dietary preference.
+_DIETARY_VIOLATIONS = {
+    'vegetarian': ['chicken', 'beef', 'pork', 'lamb', 'goat', 'fish', 'tilapia', 'salmon',
+                   'tuna', 'prawn', 'shrimp', 'meat', 'bacon', 'sausage', 'omena'],
+    'vegan':      ['chicken', 'beef', 'pork', 'lamb', 'goat', 'fish', 'tilapia', 'salmon',
+                   'tuna', 'prawn', 'shrimp', 'meat', 'bacon', 'sausage', 'omena',
+                   'milk', 'butter', 'cream', 'cheese', 'yoghurt', 'yogurt', 'egg', 'honey', 'ghee'],
+    'halal':      ['pork', 'bacon', 'ham', 'lard'],
+    'gluten-free': ['wheat', 'flour', 'chapati', 'mandazi', 'bread'],
+    'dairy-free': ['milk', 'butter', 'cream', 'cheese', 'yoghurt', 'yogurt', 'ghee'],
+    'nut-free':   ['peanut', 'groundnut', 'almond', 'cashew', 'walnut', 'pistachio'],
+}
+
+
+def _contains_ingredient(text_lower, keyword):
+    """Word-boundary match that also handles common plurals (egg→eggs, peanut→peanuts)."""
+    return bool(re.search(r'\b' + re.escape(keyword) + r'(?:s|es)?\b', text_lower))
+
+
+def _compute_flags(ingredient_list, dietary_prefs, allergies):
+    """
+    Return {'allergy_flags': [...], 'dietary_flags': [...]} for one recipe.
+    ingredient_list is the comma-separated text field from recipe_with_ingredients.
+    """
+    if not ingredient_list:
+        return {'allergy_flags': [], 'dietary_flags': []}
+    ing = ingredient_list.lower()
+    allergy_flags = [
+        a for a in allergies
+        if any(_contains_ingredient(ing, kw) for kw in _ALLERGEN_KEYWORDS.get(a, []))
+    ]
+    dietary_flags = [
+        d for d in dietary_prefs
+        if any(_contains_ingredient(ing, kw) for kw in _DIETARY_VIOLATIONS.get(d, []))
+    ]
+    return {'allergy_flags': allergy_flags, 'dietary_flags': dietary_flags}
+
+
+def _get_request_profile():
+    """
+    Read the Bearer token from the current request and return the user's saved
+    profile preferences, or None if the user is not logged in / token invalid.
+    """
+    raw   = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    if not token:
+        return None
+    try:
+        payload = verify_token(token)
+    except (BadSignature, SignatureExpired, Exception):
+        return None
+    row = query(
+        "SELECT dietary, allergies, preferred_cuisine FROM user_profiles WHERE user_id = %s",
+        (payload['id'],), many=False
+    )
+    if not row:
+        return None
+    return {
+        'dietary':           list(row['dietary']           or []),
+        'allergies':         list(row['allergies']         or []),
+        'preferred_cuisine': list(row['preferred_cuisine'] or []),
+    }
+
+
+# ── Cuisine classification ────────────────────────────────────────────────────
+
+# cuisine_type values stored in the recipes table that are considered African.
+# Everything not in this set is treated as non-African and deprioritised by default.
+_AFRICAN_CUISINES = {
+    'african', 'ugandan', 'east african', 'east-african',
+    'west african', 'west-african', 'kenyan', 'tanzanian',
+    'rwandan', 'ethiopian', 'ghanaian', 'nigerian',
+}
+
+# Profile preferred_cuisine values that signal the user explicitly wants
+# non-African content included in results.
+_NON_AFRICAN_PREFS = {'western', 'asian', 'american', 'french', 'italian', 'chinese'}
+
+
+def _is_african(cuisine_type):
+    """Return True if cuisine_type is an African/Ugandan cuisine."""
+    return (cuisine_type or '').lower().strip() in _AFRICAN_CUISINES
+
+
+def _user_allows_non_african(profile):
+    """Return True if the user's saved preferences include a non-African cuisine."""
+    if not profile:
+        return False
+    return bool(set(profile.get('preferred_cuisine', [])) & _NON_AFRICAN_PREFS)
+
+
+def _apply_profile_flags(results, profile):
+    """Annotate each result dict with allergy_flags and dietary_flags in-place."""
+    if not profile:
+        return
+    dietary   = profile.get('dietary',   [])
+    allergies = profile.get('allergies', [])
+    if not dietary and not allergies:
+        return
+    for r in results:
+        flags = _compute_flags(r.get('ingredient_list', ''), dietary, allergies)
+        r['allergy_flags'] = flags['allergy_flags']
+        r['dietary_flags'] = flags['dietary_flags']
 
 
 def _groq_semantic_filter(q, results):
@@ -233,6 +355,9 @@ def search():
     if q and len(q.split()) <= 3:
         results = _groq_semantic_filter(q, results)
 
+    # Annotate each result with allergy/dietary flags for logged-in users
+    _apply_profile_flags(results, _get_request_profile())
+
     return jsonify({
         'total':    total,
         'page':     page,
@@ -289,22 +414,50 @@ def get_all_recipes():
     )
     total = count_row['total'] if count_row else 0
 
+    profile   = _get_request_profile()
+    preferred = profile['preferred_cuisine'] if profile else []
+
+    # Build ORDER BY:
+    # 1. African cuisines always come before non-African by default
+    # 2. If the user has explicit preferred cuisines, those float above other African ones
+    # This means a user preferring "west-african" sees West African recipes first,
+    # then other African, then Western — without hiding anything.
+    if preferred:
+        order_clause = (
+            "ORDER BY "
+            "CASE WHEN r.cuisine_type = ANY(%s) THEN 0 "   # user's preferred → tier 0
+            "     WHEN r.cuisine_type = ANY(%s) THEN 1 "   # other African     → tier 1
+            "     ELSE 2 END, "                             # non-African       → tier 2
+            "r.name"
+        )
+        order_params = [preferred, list(_AFRICAN_CUISINES)]
+    else:
+        order_clause = (
+            "ORDER BY "
+            "CASE WHEN r.cuisine_type = ANY(%s) THEN 0 ELSE 1 END, "  # African → tier 0
+            "r.name"
+        )
+        order_params = [list(_AFRICAN_CUISINES)]
+
     rows = query(
         f"""
         SELECT r.*, v.ingredient_list, v.ingredient_array
         FROM recipes r
         JOIN recipe_with_ingredients v ON v.id = r.id
         {where}
-        ORDER BY r.cuisine_type, r.name
+        {order_clause}
         LIMIT %s OFFSET %s
         """,
-        params + [per_page, offset]
+        params + order_params + [per_page, offset]
     )
 
+    results = [recipe_row_to_dict(r) for r in rows]
+    _apply_profile_flags(results, profile)
+
     return jsonify({
-        'total':   total,
-        'page':    page,
+        'total':    total,
+        'page':     page,
         'per_page': per_page,
-        'pages':   (total + per_page - 1) // per_page,
-        'results': [recipe_row_to_dict(r) for r in rows],
+        'pages':    (total + per_page - 1) // per_page,
+        'results':  results,
     })
