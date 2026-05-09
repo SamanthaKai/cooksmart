@@ -75,6 +75,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
   const [genCount, setGenCount]       = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
   const [genLimitHit, setGenLimitHit] = useState(false);
 
+  const [genClarifyMsg, setGenClarifyMsg] = useState("");
+
   // Save-to-profile state — single recipe
   const [genSaved, setGenSaved]   = useState(false);
   const [genSaving, setGenSaving] = useState(false);
@@ -205,7 +207,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     if (!ingredients.length && !context) {
       setError("Describe what you have or add some ingredients."); return;
     }
-    setGenRecipe(null); setGenSaved(false); setGenSectionSaved([]); setGenSectionSaving([]); setGenLoading(true); setError("");
+    setGenRecipe(null); setGenSaved(false); setGenSectionSaved([]); setGenSectionSaving([]); setGenLoading(true); setError(""); setGenClarifyMsg("");
     // NLP extraction if user typed plain text and no pills yet
     if (context && !ingredients.length) {
       try {
@@ -221,8 +223,12 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     setGenerating(true);
     try {
       const data = await api.aiGenerate(ingredients, context);
+      if (data.clarify) {
+        setGenClarifyMsg(data.message);
+        return;
+      }
       setGenRecipe(data.recipe);
-      // Increment guest counter on success
+      // Increment guest counter only on a real recipe
       if (!user) {
         const next = genCount + 1;
         setGenCount(next);
@@ -475,6 +481,13 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             <div className="spinner" style={{ margin: "0 auto 1rem" }} />
             <p>CookSmart AI is creating your recipe…</p>
             <p style={{ fontSize: ".85rem", marginTop: ".35rem" }}>This may take a few seconds.</p>
+          </div>
+        )}
+
+        {genClarifyMsg && (
+          <div className="gen-clarify-box">
+            <span className="gen-clarify-icon">🍽️</span>
+            <p>{genClarifyMsg}</p>
           </div>
         )}
 

@@ -80,26 +80,38 @@ _NON_AFRICAN_FOODS = {
 
 # Single-word food signals: meal types, dietary contexts, ingredients, cooking words
 _FOOD_SIGNALS = {
+    # meal types
     'breakfast', 'lunch', 'dinner', 'supper', 'brunch', 'snack', 'meal',
+    # dietary / health contexts
     'diabetic', 'diabetes', 'vegetarian', 'vegan', 'pregnant', 'pregnancy',
     'hypertension', 'celiac', 'gluten', 'allergy', 'allergic', 'diet',
     'healthy', 'weight', 'calorie', 'protein', 'vitamin',
+    # cooking / intent signals
     'cook', 'recipe', 'eat', 'food', 'dish', 'ingredient', 'ingredients',
-    'hungry', 'prepare', 'serve', 'serving', 'portion',
+    'hungry', 'prepare', 'serve', 'serving', 'portion', 'drink',
+    # cuisine markers
     'ugandan', 'african', 'kenyan', 'tanzanian', 'rwandan', 'cuisine',
-    'chicken', 'beef', 'pork', 'fish', 'tilapia', 'beans', 'rice',
-    'matooke', 'posho', 'chapati', 'groundnut', 'peanut', 'cassava',
-    'yam', 'plantain', 'banana', 'tomato', 'onion', 'garlic', 'ginger',
-    'pepper', 'salt', 'oil', 'milk', 'egg', 'eggs', 'flour', 'sugar',
-    'tea', 'coffee', 'juice', 'vegetable', 'vegetables', 'fruit', 'fruits',
-    'meat', 'spice', 'spices', 'herb', 'herbs', 'sauce', 'stew', 'soup',
-    'salad', 'bread', 'cake', 'biscuit', 'cookie', 'drink', 'beverage',
-    'lemon', 'lime', 'orange', 'mango', 'avocado', 'spinach', 'kale',
-    'cabbage', 'carrot', 'potato', 'pea', 'lentil', 'chickpea',
-    'lamb', 'goat', 'turkey', 'shrimp', 'prawn', 'butter', 'cream',
-    'cheese', 'yoghurt', 'yogurt', 'rolex', 'mandazi', 'pilau', 'biryani',
-    'samosa', 'okra', 'eggplant', 'aubergine', 'corn', 'maize', 'millet',
-    'sorghum', 'sesame', 'coconut', 'tamarind',
+    # proteins
+    'chicken', 'beef', 'pork', 'fish', 'tilapia', 'beans', 'meat',
+    'lamb', 'goat', 'turkey', 'shrimp', 'prawn', 'eggs',
+    # staples & grains
+    'rice', 'matooke', 'matoke', 'posho', 'chapati', 'cassava',
+    'millet', 'sorghum', 'flour', 'bread', 'corn', 'maize',
+    # vegetables
+    'tomato', 'onion', 'garlic', 'ginger', 'pepper', 'spinach', 'kale',
+    'cabbage', 'carrot', 'potato', 'pea', 'lentil', 'chickpea', 'okra',
+    'eggplant', 'aubergine', 'mushroom', 'yam', 'plantain', 'avocado',
+    # fruits
+    'banana', 'lemon', 'lime', 'orange', 'mango', 'coconut',
+    # pantry
+    'groundnut', 'peanut', 'salt', 'oil', 'milk', 'sugar', 'butter',
+    'cream', 'cheese', 'yoghurt', 'yogurt', 'sesame', 'tamarind',
+    # prepared foods / dishes
+    'soup', 'stew', 'sauce', 'salad', 'tea', 'coffee', 'juice',
+    'cake', 'biscuit', 'cookie', 'beverage', 'rolex', 'mandazi',
+    'pilau', 'biryani', 'samosa',
+    # condiments / seasonings
+    'spice', 'spices', 'herb', 'herbs',
 }
 
 # Multi-word food signals (matched as substrings in the combined text)
