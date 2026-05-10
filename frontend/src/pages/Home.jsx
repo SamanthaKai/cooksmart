@@ -228,6 +228,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
         return;
       }
       setGenRecipe(data.recipe);
+      setGenOpen(false);
       // Increment guest counter only on a real recipe
       if (!user) {
         const next = genCount + 1;

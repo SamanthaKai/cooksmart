@@ -17,27 +17,28 @@ function EyeIcon({ open }) {
 }
 
 export default function LoginPage({ onLogin, onBack, isModal = false }) {
-  const [tab, setTab]           = useState("login");   // "login" | "register"
-  const [name, setName]         = useState("");
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw]     = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [tab, setTab]                   = useState("login");   // "login" | "register"
+  const [name, setName]                 = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
+  const [showPw, setShowPw]             = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
+  const [verificationSent, setVerificationSent] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const body = tab === "register"
-        ? { name, email, password }
-        : { email, password };
-      const data = tab === "register"
-        ? await api.register(body)
-        : await api.login(body);
-      localStorage.setItem("cooksmart_token", data.token);
-      onLogin(data.user);
+      if (tab === "register") {
+        await api.register({ name, email, password });
+        setVerificationSent(true);
+      } else {
+        const data = await api.login({ email, password });
+        localStorage.setItem("cooksmart_token", data.token);
+        onLogin(data.user);
+      }
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -61,6 +62,16 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
           <button className="login-modal-close" onClick={onBack} aria-label="Close">✕</button>
         )}
         <div className="login-brand">Cook<span>Smart</span></div>
+        {verificationSent ? (
+          <div className="login-verification-notice">
+            <p className="login-verification-title">Check your inbox!</p>
+            <p>A verification link has been sent to <strong>{email}</strong>. Please check your inbox to activate your account.</p>
+            <button className="login-link" onClick={() => { setVerificationSent(false); switchTab("login"); }}>
+              Back to Sign In
+            </button>
+          </div>
+        ) : (
+          <>
         <p className="login-tagline">Sign in to save and like recipes</p>
         <div className="login-tabs">
           <button className={`login-tab${tab === "login" ? " active" : ""}`} onClick={() => switchTab("login")}>Sign In</button>
@@ -95,6 +106,8 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
             : <><span>Already have an account? </span><button className="login-link" onClick={() => switchTab("login")}>Sign in</button></>
           }
         </p>
+          </>
+        )}
       </div>
     );
   }
@@ -106,6 +119,17 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
         <div className="login-brand">
           Cook<span>Smart</span>
         </div>
+
+        {verificationSent ? (
+          <div className="login-verification-notice">
+            <p className="login-verification-title">Check your inbox!</p>
+            <p>A verification link has been sent to <strong>{email}</strong>. Please check your inbox to activate your account.</p>
+            <button className="login-link" onClick={() => { setVerificationSent(false); switchTab("login"); }}>
+              Back to Sign In
+            </button>
+          </div>
+        ) : (
+          <>
         <p className="login-tagline">Authentic Ugandan &amp; African recipes</p>
 
         {/* Tab toggle */}
@@ -207,6 +231,8 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
           <p className="login-browse-link">
             <button className="login-link" onClick={onBack}>← Browse recipes without signing in</button>
           </p>
+        )}
+          </>
         )}
       </div>
     </div>

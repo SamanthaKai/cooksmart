@@ -1417,6 +1417,25 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   font-size: .85rem;
   color: var(--earth-dark);
 }
+.login-verification-notice {
+  text-align: center;
+  padding: 1.5rem 0 .5rem;
+}
+.login-verification-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: .75rem;
+}
+.login-verification-notice p {
+  font-size: .9rem;
+  color: var(--stone);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+.login-verification-notice strong {
+  color: var(--earth);
+}
 .login-btn {
   margin-top: .25rem;
   padding: .85rem;
