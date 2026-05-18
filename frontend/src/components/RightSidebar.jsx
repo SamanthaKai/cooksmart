@@ -121,8 +121,18 @@ export default function RightSidebar({ user, onMealPlan, onSelectRecipe, onLogin
               </button>
             ))}
           </div>
+        ) : user ? (
+          <div className="rs-meal-empty">
+            <div className="rs-meal-empty-icon">📅</div>
+            <p className="rs-meal-empty-title">No meals planned yet</p>
+            <p className="rs-meal-empty-sub">Start planning your week!</p>
+          </div>
         ) : (
-          <p className="rs-empty-text">{user ? "No meals planned yet." : "Sign in to see your meal plan."}</p>
+          <div className="rs-meal-empty">
+            <div className="rs-meal-empty-icon">📅</div>
+            <p className="rs-meal-empty-title">Plan your meals</p>
+            <p className="rs-meal-empty-sub">Sign in to see your meal plan.</p>
+          </div>
         )}
 
         <button className="rs-outline-btn" onClick={user ? onMealPlan : onLogin}>

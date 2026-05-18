@@ -5,20 +5,20 @@ import LeftSidebar from "../components/LeftSidebar";
 import RightSidebar from "../components/RightSidebar";
 import { useLang } from "../context/LanguageContext";
 import {
-  LayoutGrid, Globe, Soup, Utensils, Cookie, Sunrise, GlassWater, Cake,
+  LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater, Cake,
   Bell, ChevronDown, SlidersHorizontal, X as XIcon,
 } from "lucide-react";
 
 // ── Category filters — 8 items matching mockup ────────────────────────────────
 const CATEGORY_FILTERS = [
-  { label: "All Recipes", Icon: LayoutGrid,  type: "all" },
-  { label: "African",     Icon: Globe,       type: "cuisine", value: "african" },
-  { label: "Soups",       Icon: Soup,        type: "course",  value: "soup" },
-  { label: "Main Dishes", Icon: Utensils,    type: "course",  value: "main" },
-  { label: "Snacks",      Icon: Cookie,      type: "course",  value: "snack" },
-  { label: "Breakfast",   Icon: Sunrise,     type: "course",  value: "breakfast" },
-  { label: "Drinks",      Icon: GlassWater,  type: "course",  value: "beverage" },
-  { label: "Desserts",    Icon: Cake,        type: "course",  value: "dessert" },
+  { label: "All Recipes", Icon: LayoutGrid,     type: "all" },
+  { label: "African",     Icon: Globe,          type: "cuisine", value: "african" },
+  { label: "Soups",       Icon: Soup,           type: "course",  value: "soup" },
+  { label: "Main Dishes", Icon: UtensilsCrossed,type: "course",  value: "main" },
+  { label: "Snacks",      Icon: Cookie,         type: "course",  value: "snack" },
+  { label: "Breakfast",   Icon: Sun,            type: "course",  value: "breakfast" },
+  { label: "Drinks",      Icon: GlassWater,     type: "course",  value: "beverage" },
+  { label: "Desserts",    Icon: Cake,           type: "course",  value: "dessert" },
 ];
 
 // PillInput at module level — avoids remount on every parent render
@@ -844,6 +844,26 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
         />
 
       </div>
+
+      {/* ── Mobile bottom navigation ── */}
+      <nav className="bottom-nav">
+        <button className="bottom-nav-item active" onClick={() => { setSearched(false); setCuisine(""); setCourse(""); }}>
+          <span>🏠</span>Home
+        </button>
+        <button className="bottom-nav-item" onClick={() => { setMode("name"); setSearched(false); setQuery(""); }}>
+          <span>🔍</span>Explore
+        </button>
+        <button className="bottom-nav-item" onClick={user ? onMealPlan : onLogin}>
+          <span>📅</span>Meal Plan
+        </button>
+        <button className="bottom-nav-item" onClick={user ? onProfile : onLogin}>
+          <span>❤️</span>Saved
+        </button>
+        <button className="bottom-nav-item" onClick={user ? onProfile : onLogin}>
+          <span>👤</span>Profile
+        </button>
+      </nav>
+
     </div>
   );
 }

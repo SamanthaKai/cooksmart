@@ -56,7 +56,7 @@ export default function LeftSidebar({ user, onLogin, onMealPlan, onProfile, acti
 
       {/* Meal Plan card */}
       <div className="sidebar-mp-card">
-        <div className="sidebar-mp-art">🥘</div>
+        <div className="sidebar-mp-art">🥗</div>
         <h4 className="sidebar-mp-title">Create your meal plan</h4>
         <p className="sidebar-mp-desc">Plan your meals for the week and shop smart.</p>
         <button className="sidebar-mp-btn" onClick={user ? onMealPlan : onLogin}>
