@@ -5,7 +5,7 @@ import LeftSidebar from "../components/LeftSidebar";
 import RightSidebar from "../components/RightSidebar";
 import { useLang } from "../context/LanguageContext";
 import {
-  LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater, Cake,
+  LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater,
   Bell, ChevronDown, SlidersHorizontal, X as XIcon,
 } from "lucide-react";
 
@@ -18,7 +18,6 @@ const CATEGORY_FILTERS = [
   { label: "Snacks",      Icon: Cookie,         type: "course",  value: "snack" },
   { label: "Breakfast",   Icon: Sun,            type: "course",  value: "breakfast" },
   { label: "Drinks",      Icon: GlassWater,     type: "course",  value: "beverage" },
-  { label: "Desserts",    Icon: Cake,           type: "course",  value: "dessert" },
 ];
 
 // PillInput at module level — avoids remount on every parent render
@@ -684,7 +683,6 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
               <div className="category-section">
                 <div className="section-head-row" style={{ marginBottom: ".85rem" }}>
                   <h2 className="category-section-title" style={{ marginBottom: 0 }}>Browse by category</h2>
-                  <button className="section-view-all" onClick={() => { setCuisine(""); setCourse(""); }}>View all</button>
                 </div>
                 <div className="category-pills">
                   {CATEGORY_FILTERS.map(cat => (
@@ -732,7 +730,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
 
             {/* ── Recipe sections ── */}
             {!loading && results.length > 0 && (
-              !searched && !cuisine && !course && results.length >= 8 ? (
+              !searched && !cuisine && !course && results.length >= 6 ? (
                 <>
                   {/* Recommended for you */}
                   <div className="recipe-section">
@@ -743,8 +741,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                       </h2>
                       <button className="section-view-all" onClick={() => setCourse("main")}>View all</button>
                     </div>
-                    <div className="recipe-scroll-row">
-                      {results.slice(0, 4).map(r => (
+                    <div className="recipe-grid">
+                      {results.slice(0, 3).map(r => (
                         <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
                           isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
                           onAddToMealPlan={onAddToMealPlan} />
@@ -753,7 +751,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                   </div>
 
                   {/* Trending this week */}
-                  {results.length > 4 && (
+                  {results.length > 3 && (
                     <div className="recipe-section">
                       <div className="section-head-row">
                         <h2 className="section-heading">
@@ -762,8 +760,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                         </h2>
                         <button className="section-view-all">View all</button>
                       </div>
-                      <div className="recipe-scroll-row">
-                        {results.slice(4, 8).map(r => (
+                      <div className="recipe-grid">
+                        {results.slice(3, 6).map(r => (
                           <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
                             isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
                             onAddToMealPlan={onAddToMealPlan} />
