@@ -5,22 +5,20 @@ import LeftSidebar from "../components/LeftSidebar";
 import RightSidebar from "../components/RightSidebar";
 import { useLang } from "../context/LanguageContext";
 import {
-  LayoutGrid, Globe, Globe2, Soup, Utensils, UtensilsCrossed,
-  GlassWater, Coffee, Cookie, Leaf, Bell, ChevronDown,
+  LayoutGrid, Globe, Soup, Utensils, Cookie, Sunrise, GlassWater, Cake,
+  Bell, ChevronDown, SlidersHorizontal, X as XIcon,
 } from "lucide-react";
 
-// ── Category filters — all 10, typed for combined cuisine+course handling ────
+// ── Category filters — 8 items matching mockup ────────────────────────────────
 const CATEGORY_FILTERS = [
-  { label: "All Recipes", Icon: LayoutGrid,      type: "all" },
-  { label: "African",     Icon: Globe,           type: "cuisine", value: "african" },
-  { label: "Western",     Icon: Globe2,          type: "cuisine", value: "western" },
-  { label: "Main",        Icon: Utensils,        type: "course",  value: "main" },
-  { label: "Soup",        Icon: Soup,            type: "course",  value: "soup" },
-  { label: "Side",        Icon: UtensilsCrossed, type: "course",  value: "side" },
-  { label: "Beverage",    Icon: GlassWater,      type: "course",  value: "beverage" },
-  { label: "Breakfast",   Icon: Coffee,          type: "course",  value: "breakfast" },
-  { label: "Snack",       Icon: Cookie,          type: "course",  value: "snack" },
-  { label: "Seasoning",   Icon: Leaf,            type: "course",  value: "seasoning" },
+  { label: "All Recipes", Icon: LayoutGrid,  type: "all" },
+  { label: "African",     Icon: Globe,       type: "cuisine", value: "african" },
+  { label: "Soups",       Icon: Soup,        type: "course",  value: "soup" },
+  { label: "Main Dishes", Icon: Utensils,    type: "course",  value: "main" },
+  { label: "Snacks",      Icon: Cookie,      type: "course",  value: "snack" },
+  { label: "Breakfast",   Icon: Sunrise,     type: "course",  value: "breakfast" },
+  { label: "Drinks",      Icon: GlassWater,  type: "course",  value: "beverage" },
+  { label: "Desserts",    Icon: Cake,        type: "course",  value: "dessert" },
 ];
 
 // PillInput at module level — avoids remount on every parent render
@@ -429,15 +427,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
             <h1>Good food. Made easy.<br />Made for you.</h1>
             <p>Discover African recipes, get smart suggestions and cook with confidence.</p>
 
-            {/* Mode toggle */}
-            <div className="mode-toggle">
-              <button className={`mode-btn${mode === "name" ? " active" : ""}`} onClick={() => switchMode("name")}>{t("by_name")}</button>
-              <button className={`mode-btn${mode === "ingredients" ? " active" : ""}`} onClick={() => switchMode("ingredients")}>{t("by_ingredients")}</button>
-            </div>
-
-            {/* Name search */}
-            {mode === "name" && (
-              <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
+            {/* Search bar — name mode by default, sliders toggles ingredient mode */}
+            <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
+              {mode === "name" ? (
                 <form className="search-wrap" onSubmit={handleNameSearch}>
                   <span className="search-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -452,6 +444,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                     onFocus={() => setShowSuggest(true)}
                     autoComplete="off"
                   />
+                  <button type="button" className="search-mode-btn" onClick={() => switchMode("ingredients")} title="Search by ingredients">
+                    <SlidersHorizontal size={15} strokeWidth={1.8} />
+                  </button>
                   {showSuggest && suggestions.length > 0 && (
                     <div className="suggest-dropdown">
                       {suggestions.map(s => (
@@ -464,33 +459,38 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                     </div>
                   )}
                 </form>
-                <div className="popular-chips">
-                  <span className="popular-label">Popular searches:</span>
-                  {["Jollof Rice", "Matoke", "Chicken Stew", "Groundnut Soup", "Fried Plantain"].map(q => (
-                    <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>{q}</button>
-                  ))}
+              ) : (
+                <div className="search-wrap ing-mode-wrap">
+                  <PillInput
+                    pills={pills} ingInput={ingInput} ingRef={ingRef}
+                    ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
+                    onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
+                    onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
+                  />
+                  <button type="button" className="search-mode-btn search-mode-btn--close" onClick={() => switchMode("name")} title="Back to recipe search">
+                    <XIcon size={15} strokeWidth={2} />
+                  </button>
                 </div>
-                <div style={{ marginTop: "1rem" }}>
-                  <button className="search-btn" onClick={handleNameSearch} disabled={!query.trim()}>{t("search_btn")}</button>
-                </div>
+              )}
+            </div>
+
+            {/* Popular chips — name mode only */}
+            {mode === "name" && (
+              <div className="popular-chips">
+                <span className="popular-label">Popular searches:</span>
+                {["Jollof Rice", "Pepper Soup", "Plantain", "Beef Stew", "Moi Moi"].map(q => (
+                  <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>{q}</button>
+                ))}
               </div>
             )}
 
-            {/* Ingredient search */}
+            {/* Ingredient search button */}
             {mode === "ingredients" && (
-              <>
-                <PillInput
-                  pills={pills} ingInput={ingInput} ingRef={ingRef}
-                  ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
-                  onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
-                  onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
-                />
-                <div style={{ marginTop: ".75rem" }}>
-                  <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
-                    {loading ? "…" : t("search_ing_btn")}
-                  </button>
-                </div>
-              </>
+              <div style={{ marginTop: ".75rem" }}>
+                <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
+                  {loading ? "…" : t("search_ing_btn")}
+                </button>
+              </div>
             )}
 
             {/* AI Generate CTA */}
@@ -682,7 +682,10 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
             {/* ── Category pills ── */}
             {!searched && (
               <div className="category-section">
-                <h2 className="category-section-title">Browse by category</h2>
+                <div className="section-head-row" style={{ marginBottom: ".85rem" }}>
+                  <h2 className="category-section-title" style={{ marginBottom: 0 }}>Browse by category</h2>
+                  <button className="section-view-all" onClick={() => { setCuisine(""); setCourse(""); }}>View all</button>
+                </div>
                 <div className="category-pills">
                   {CATEGORY_FILTERS.map(cat => (
                     <button

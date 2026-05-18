@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock } from "lucide-react";
+import { Clock, ChefHat } from "lucide-react";
 import { getRecipeImage } from "../utils/imageHelper";
 
 function getFlavorDescriptor(recipe) {
@@ -53,11 +53,20 @@ function RecipeImage({ recipe, emoji }) {
   );
 }
 
-function BookmarkIcon({ filled }) {
+function HeartIcon({ filled }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24"
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+  );
+}
+
+function SmallBookmarkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
     </svg>
   );
@@ -75,14 +84,14 @@ export default function RecipeCard({
         <span className={`card-cuisine${recipe.cuisine_type === "western" ? " western" : ""}`}>
           {recipe.cuisine_type}
         </span>
-        {/* Save button — always shown; handled by parent (guest → modal) */}
+        {/* Heart save button on image */}
         <button
           className={`card-save-btn${isSaved ? " saved" : ""}`}
           onClick={e => { e.stopPropagation(); onToggleSave?.(recipe.id); }}
           title={isSaved ? "Saved" : "Save recipe"}
           aria-label={isSaved ? "Remove from saved" : "Save recipe"}
         >
-          <BookmarkIcon filled={!!isSaved} />
+          <HeartIcon filled={!!isSaved} />
         </button>
       </div>
 
@@ -107,9 +116,19 @@ export default function RecipeCard({
               <Clock size={12} strokeWidth={2} />
               {recipe.cook_time ? `${recipe.cook_time} mins` : recipe.prep_time ? `${recipe.prep_time} mins` : "30 mins"}
             </span>
-            <span className="card-difficulty">{recipe.difficulty || "Medium"}</span>
+            <span className="card-difficulty">
+              <ChefHat size={12} strokeWidth={2} />
+              {recipe.difficulty || "Medium"}
+            </span>
           </div>
-          <span className="card-course">{recipe.course}</span>
+          <button
+            className="card-footer-save"
+            onClick={e => { e.stopPropagation(); onToggleSave?.(recipe.id); }}
+            title={isSaved ? "Saved" : "Save"}
+            aria-label={isSaved ? "Remove from saved" : "Save recipe"}
+          >
+            <SmallBookmarkIcon />
+          </button>
         </div>
       </div>
     </div>
