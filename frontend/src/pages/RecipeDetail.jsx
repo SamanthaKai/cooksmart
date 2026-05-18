@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
 import { getRecipeImage } from "../utils/imageHelper";
 import { downloadRecipePDF } from "../utils/downloadPDF";
+import { useLang } from "../context/LanguageContext";
 
 // Split "200g lemon grass" into { qty: "200g", name: "lemon grass" }
 function parseIngredient(raw) {
@@ -10,6 +11,41 @@ function parseIngredient(raw) {
   const match = raw.match(/^([\d½¼¾./\s]+\s*(?:g|kg|ml|l|litre|liter|cup|cups|tbsp|tsp|tablespoon|teaspoon|bunch|bunches|pieces?|oz|lb|medium|large|small|handful|pinch|cloves?|slices?)?)\s+(.+)$/i);
   if (match) return { qty: match[1].trim(), name: match[2].trim() };
   return { qty: null, name: raw };
+}
+
+// Scale a quantity string by factor; leaves non-numeric quantities unchanged.
+function scaleQty(qtyStr, factor) {
+  if (!qtyStr || factor === 1) return qtyStr;
+  // Resolve unicode vulgar fractions, including digit-prefixed ones like "1½"
+  let s = qtyStr
+    .replace(/(\d)½/g, (_, d) => String(parseFloat(d) + 0.5))
+    .replace(/(\d)¼/g, (_, d) => String(parseFloat(d) + 0.25))
+    .replace(/(\d)¾/g, (_, d) => String(parseFloat(d) + 0.75))
+    .replace(/½/g, "0.5")
+    .replace(/¼/g, "0.25")
+    .replace(/¾/g, "0.75");
+  // Extract leading numeric expression (integer, decimal, fraction, or mixed number)
+  const m = s.match(/^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)(.*)/);
+  if (!m) return qtyStr;
+  const numStr = m[1].trim();
+  const rest = m[2]; // unit including any leading space
+  let num;
+  const spaceAt = numStr.indexOf(" ");
+  if (spaceAt > -1) {
+    // Mixed number e.g. "1 1/2"
+    const [slash] = numStr.substring(spaceAt + 1).split("/").map(Number);
+    const denom = Number(numStr.substring(spaceAt + 1).split("/")[1]);
+    num = parseFloat(numStr) + slash / denom;
+  } else if (numStr.includes("/")) {
+    const [n, d] = numStr.split("/").map(Number);
+    num = n / d;
+  } else {
+    num = parseFloat(numStr);
+  }
+  if (isNaN(num)) return qtyStr;
+  const scaled = Math.round(num * factor * 10) / 10;
+  const display = Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(1);
+  return display + rest;
 }
 
 // Hero image fills parent via absolute positioning
@@ -48,11 +84,18 @@ function RecipeImage({ recipe, fallbackEmoji }) {
     />
   );
 }
-export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin }) {
+const DAYS_DETAIL = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin, onAddToMealPlan }) {
   const [recipe, setRecipe]           = useState(null);
   const [recos,  setRecos]            = useState([]);
   const [loading, setLoading]         = useState(true);
   const [recoLoading, setRecoLoading] = useState(false);
+  const [servings, setServings]       = useState(null);
+  const [planPickerOpen, setPlanPickerOpen] = useState(false);
+  const [planAddedDay,   setPlanAddedDay]   = useState(null);
+  const planPickerRef = useRef(null);
+  const { lang, toggleLang, t } = useLang();
 
   // ── AI features ──────────────────────────────────────────────────────────
   const [showSubs, setShowSubs]         = useState(false);
@@ -148,8 +191,51 @@ export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedId
   }
 
   useEffect(() => {
+    if (!planPickerOpen) return;
+    function close(e) { if (planPickerRef.current && !planPickerRef.current.contains(e.target)) setPlanPickerOpen(false); }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [planPickerOpen]);
+
+  async function handleDetailPickDay(day) {
+    setPlanPickerOpen(false);
+    await onAddToMealPlan?.(recipe?.id, day);
+    setPlanAddedDay(day.slice(0, 3));
+    setTimeout(() => setPlanAddedDay(null), 2400);
+  }
+
+  function shareOnWhatsApp() {
+    const title = recipe.name;
+    const localPart = recipe.local_name && recipe.local_name !== recipe.name
+      ? ` (${recipe.local_name})`
+      : "";
+
+    const rawIngredients = recipe.ingredients_display || recipe.ingredient_list || "";
+    const ingLines = rawIngredients
+      .split("|")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+      .map(s => `• ${s}`)
+      .join("\n");
+
+    const message = [
+      "Check out this Ugandan recipe on CookSmart! 🍽️",
+      "",
+      `*${title}${localPart}*`,
+      "",
+      ingLines ? `Ingredients:\n${ingLines}` : "",
+      "",
+      "Full recipe: https://cooksmart-seven.vercel.app",
+    ].join("\n");
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
+  useEffect(() => {
     setLoading(true);
     setRecos([]);
+    setServings(null);
     // reset AI panels when recipe changes
     setShowSubs(false); setActiveSubIng(null); setSubResults(null); setSubError("");
     setTips(null); setTipsError("");
@@ -159,6 +245,7 @@ export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedId
     api.recipe(recipeId)
       .then(data => {
         setRecipe(data);
+        setServings(data.servings || 4);
         setLoading(false);
         // Record view silently (no-op for guests on the server)
         api.interactionView(recipeId).catch(() => {});
@@ -210,6 +297,9 @@ export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedId
     .filter(Boolean)
     .map(parseIngredient);
 
+  const currentServings = servings ?? recipe.servings ?? 4;
+  const scaleFactor = recipe.servings ? currentServings / recipe.servings : 1;
+
   // Parse steps
 // Replace with:
 const steps = (recipe.instructions || "")
@@ -221,9 +311,28 @@ const steps = (recipe.instructions || "")
     <div className="app">
       <nav className="navbar">
         <span className="navbar-brand">Cook<span>Smart</span></span>
-        <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>
-          {recipe.cuisine_type === "african" ? "🌍 African cuisine" : "🍴 Western cuisine"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{ display: "inline-flex", border: "1.5px solid var(--border)", borderRadius: 99, overflow: "hidden" }}>
+            {["en", "lg"].map(code => (
+              <button
+                key={code}
+                onClick={() => lang !== code && toggleLang()}
+                style={{
+                  padding: "3px 9px", border: "none", cursor: "pointer",
+                  fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
+                  letterSpacing: ".04em", transition: "all .15s",
+                  background: lang === code ? "var(--earth)" : "transparent",
+                  color:      lang === code ? "var(--white)" : "var(--stone)",
+                }}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>
+            {recipe.cuisine_type === "african" ? "🌍 African cuisine" : "🍴 Western cuisine"}
+          </span>
+        </div>
       </nav>
 
       <div className="detail-page">
@@ -250,7 +359,7 @@ const steps = (recipe.instructions || "")
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                   </svg>
-                  <span>{savedIds?.has(recipe.id) ? "Saved" : "Save"}</span>
+                  <span>{savedIds?.has(recipe.id) ? t("saved") : t("save")}</span>
                 </button>
                 <button
                   className={`detail-action-btn${likedIds?.has(recipe.id) ? " active-like" : ""}`}
@@ -262,7 +371,7 @@ const steps = (recipe.instructions || "")
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                   </svg>
-                  <span>{likedIds?.has(recipe.id) ? "Liked" : "Like"}</span>
+                  <span>{likedIds?.has(recipe.id) ? t("liked") : t("like")}</span>
                 </button>
                 <button
                   className="detail-action-btn"
@@ -276,6 +385,49 @@ const steps = (recipe.instructions || "")
                   </svg>
                   <span>PDF</span>
                 </button>
+                {/* Meal plan button with day picker */}
+                <div ref={planPickerRef} style={{ position: "relative" }}>
+                  <button
+                    className={`detail-action-btn${planAddedDay ? " active-save" : ""}`}
+                    onClick={() => onAddToMealPlan ? setPlanPickerOpen(o => !o) : onRequestLogin?.()}
+                    title="Add to meal plan"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span>{planAddedDay ? `✓ ${planAddedDay}` : "Plan"}</span>
+                  </button>
+                  {planPickerOpen && (
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 6px)", right: 0,
+                      background: "var(--white)", border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)", boxShadow: "var(--shadow-lg)",
+                      zIndex: 200, overflow: "hidden", minWidth: 130,
+                    }}>
+                      <div style={{ padding: "6px 12px 4px", fontSize: ".7rem", fontWeight: 700, color: "var(--stone)", borderBottom: "1px solid var(--border)", letterSpacing: ".04em" }}>
+                        ADD TO PLAN
+                      </div>
+                      {DAYS_DETAIL.map(day => (
+                        <button
+                          key={day}
+                          onClick={() => handleDetailPickDay(day)}
+                          style={{
+                            display: "block", width: "100%", textAlign: "left",
+                            padding: "7px 12px", background: "none", border: "none",
+                            cursor: "pointer", fontSize: ".85rem", color: "var(--charcoal)",
+                            transition: "background .1s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = "var(--cream)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "none"}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="detail-hero-bottom">
@@ -285,7 +437,7 @@ const steps = (recipe.instructions || "")
                 {recipe.community && <span className="meta-chip">{recipe.community}</span>}
                 {recipe.prep_time  && <span className="meta-chip">⏱ Prep: {recipe.prep_time}min</span>}
                 {recipe.cook_time  && <span className="meta-chip">🔥 Cook: {recipe.cook_time}min</span>}
-                {recipe.servings   && <span className="meta-chip">👥 Serves {recipe.servings}</span>}
+                {recipe.servings   && <span className="meta-chip">👥 Serves {currentServings}</span>}
               </div>
               <h1 className="detail-title">{recipe.name}</h1>
               {recipe.local_name && recipe.local_name !== recipe.name && (
@@ -313,7 +465,26 @@ const steps = (recipe.instructions || "")
           {/* Ingredients */}
           <div>
             <div className="detail-section">
-              <h3>Ingredients</h3>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".75rem" }}>
+                <h3 style={{ margin: 0 }}>{t("ingredients")}</h3>
+                {recipe.servings && (
+                  <div style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
+                    <button
+                      aria-label="Decrease servings"
+                      onClick={() => setServings(s => Math.max(1, (s ?? recipe.servings) - 1))}
+                      style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid var(--earth)", background: "transparent", cursor: "pointer", fontSize: "1.15rem", lineHeight: 1, color: "var(--earth-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >−</button>
+                    <span style={{ minWidth: 76, textAlign: "center", fontSize: ".83rem", fontWeight: 600, color: "var(--earth-dark)" }}>
+                      {currentServings} serving{currentServings !== 1 ? "s" : ""}
+                    </span>
+                    <button
+                      aria-label="Increase servings"
+                      onClick={() => setServings(s => (s ?? recipe.servings) + 1)}
+                      style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid var(--earth)", background: "transparent", cursor: "pointer", fontSize: "1.15rem", lineHeight: 1, color: "var(--earth-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >+</button>
+                  </div>
+                )}
+              </div>
               {ingredients.length > 0 ? (
                 <ul className="ing-list">
                   {ingredients.map((ing, i) => (
@@ -322,7 +493,7 @@ const steps = (recipe.instructions || "")
                         {ing.name.charAt(0).toUpperCase() + ing.name.slice(1)}
                       </span>
                       {ing.qty && (
-                        <span className="ing-qty">{ing.qty}</span>
+                        <span className="ing-qty">{scaleQty(ing.qty, scaleFactor)}</span>
                       )}
                     </li>
                   ))}
@@ -395,7 +566,7 @@ const steps = (recipe.instructions || "")
 
           {/* Instructions */}
           <div className="detail-section">
-            <h3>Preparation</h3>
+            <h3>{t("preparation")}</h3>
             {steps.length > 0 ? (
               <ol className="steps-list">
                 {steps.map((step, i) => <li key={i}>{step}</li>)}
@@ -627,6 +798,21 @@ const steps = (recipe.instructions || "")
               )}
             </div>
           )}
+        </div>
+
+        {/* Share this recipe */}
+        <div className="share-section">
+          <h3 className="share-section-label">Share this recipe</h3>
+          <button
+            className="whatsapp-share-btn"
+            onClick={shareOnWhatsApp}
+            title="Share on WhatsApp"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            Share on WhatsApp
+          </button>
         </div>
 
         {/* AI Recommendations */}

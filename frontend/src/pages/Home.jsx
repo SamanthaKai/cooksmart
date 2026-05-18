@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
+import { useLang } from "../context/LanguageContext";
 
 const COURSES = ["main","soup","side","sauce","beverage","breakfast","snack","seasoning"];
 
@@ -43,7 +44,26 @@ function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
   );
 }
 
-export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogin, savedIds, onToggleSave, onRequestLogin }) {
+function SkeletonGrid({ count = 8 }) {
+  return (
+    <div className="recipe-grid">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="card-skeleton">
+          <div className="skeleton-img" />
+          <div className="skeleton-body">
+            <div className="skeleton-line" style={{ width: "72%" }} />
+            <div className="skeleton-line" style={{ width: "48%", animationDelay: ".15s" }} />
+            <div className="skeleton-line" style={{ width: "32%", height: 11, marginTop: ".6rem", animationDelay: ".3s" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMealPlan, onLogin, savedIds, onToggleSave, onRequestLogin, onAddToMealPlan }) {
+  const { lang, toggleLang, t } = useLang();
+  const [menuOpen, setMenuOpen]        = useState(false);
   const [mode, setMode]               = useState("name");
   const [query, setQuery]             = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -149,10 +169,11 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
     function handle(e) {
       if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
       if (ingRef.current     && !ingRef.current.contains(e.target))     setShowIngSug(false);
+      if (menuOpen && !e.target.closest('.navbar') && !e.target.closest('.mobile-menu')) setMenuOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, []);
+  }, [menuOpen]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   async function handleNameSearch(e) {
@@ -334,19 +355,73 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
           {totalCount > 0 && mode !== "generate" && (
             <span className="navbar-count">{totalCount} recipes</span>
           )}
+          {/* Language toggle */}
+          <div style={{ display: "inline-flex", border: "1.5px solid var(--border)", borderRadius: 99, overflow: "hidden", flexShrink: 0 }}>
+            {["en", "lg"].map(code => (
+              <button
+                key={code}
+                onClick={() => lang !== code && toggleLang()}
+                style={{
+                  padding: "3px 9px", border: "none", cursor: "pointer",
+                  fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
+                  letterSpacing: ".04em", transition: "all .15s",
+                  background: lang === code ? "var(--earth)" : "transparent",
+                  color:      lang === code ? "var(--white)" : "var(--stone)",
+                }}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
           {user ? (
             <div className="navbar-user">
               <span className="navbar-user-name">Hi, {user.name.split(" ")[0]}</span>
-              <button className="navbar-profile-btn" onClick={onProfile}>Profile</button>
-              <button className="navbar-logout" onClick={onLogout}>Sign out</button>
+              <button className="navbar-profile-btn" onClick={onMealPlan}>{t("nav_mealplan")}</button>
+              <button className="navbar-profile-btn" onClick={onProfile}>{t("nav_profile")}</button>
+              <button className="navbar-logout" onClick={onLogout}>{t("nav_signout")}</button>
             </div>
           ) : (
             <div className="navbar-guest">
-              <button className="navbar-signin-btn" onClick={onLogin}>Sign in</button>
+              <button className="navbar-signin-btn" onClick={onLogin}>{t("nav_signin")}</button>
             </div>
           )}
+          {/* Hamburger — mobile only, shown via CSS */}
+          <button
+            className={`hamburger${menuOpen ? " open" : ""}`}
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </nav>
+
+      {/* ── Mobile menu ── */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          {user ? (
+            <>
+              <p className="mobile-menu-greeting">Hi, {user.name.split(" ")[0]}</p>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onMealPlan(); setMenuOpen(false); }}>
+                {t("nav_mealplan")}
+              </button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onProfile(); setMenuOpen(false); }}>
+                {t("nav_profile")}
+              </button>
+              <button className="mobile-menu-btn mobile-menu-btn--ghost" onClick={() => { onLogout(); setMenuOpen(false); }}>
+                {t("nav_signout")}
+              </button>
+            </>
+          ) : (
+            <button className="mobile-menu-btn" onClick={() => { onLogin(); setMenuOpen(false); }}>
+              {t("nav_signin")}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Hero ── */}
       <div className="hero">
@@ -356,10 +431,10 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
         {/* Mode toggle */}
         <div className="mode-toggle">
           <button className={`mode-btn${mode === "name" ? " active" : ""}`} onClick={() => switchMode("name")}>
-            By name
+            {t("by_name")}
           </button>
           <button className={`mode-btn${mode === "ingredients" ? " active" : ""}`} onClick={() => switchMode("ingredients")}>
-            By ingredients
+            {t("by_ingredients")}
           </button>
         </div>
 
@@ -374,7 +449,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               </span>
               <input
                 className="search-input"
-                placeholder="e.g. Matoke, Jollof Rice, Chicken Stew…"
+                placeholder={t("search_placeholder")}
                 value={query}
                 onChange={e => { setQuery(e.target.value); setShowSuggest(true); }}
                 onFocus={() => setShowSuggest(true)}
@@ -394,7 +469,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             </form>
             <div style={{ marginTop: "1rem" }}>
               <button className="search-btn" onClick={handleNameSearch} disabled={!query.trim()}>
-                Search recipes
+                {t("search_btn")}
               </button>
             </div>
           </div>
@@ -418,7 +493,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
             />
             <div style={{ marginTop: ".75rem" }}>
               <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
-                {loading ? "Searching…" : "Find recipes"}
+                {loading ? "…" : t("search_ing_btn")}
               </button>
             </div>
 
@@ -461,7 +536,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               <div className="ai-gen-actions">
                 <button className="search-btn" onClick={handleGenerate}
                   disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
-                  {generating ? "Generating…" : genLoading ? "Reading ingredients…" : "Build my dish"}
+                  {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
                 </button>
                 <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
                   Cancel
@@ -522,7 +597,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                     </div>
                     <div className="gen-body">
                       <div className="gen-section">
-                        <h3>Ingredients</h3>
+                        <h3>{t("ingredients")}</h3>
                         <ul className="gen-ing-list">
                           {(section.ingredients || []).map((ing, i) => (
                             <li key={i} className="gen-ing-item">
@@ -533,7 +608,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                         </ul>
                       </div>
                       <div className="gen-section">
-                        <h3>Instructions</h3>
+                        <h3>{t("instructions")}</h3>
                         <ol className="gen-steps">
                           {(section.steps || []).map((step, i) => (
                             <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
@@ -586,7 +661,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                 </div>
                 <div className="gen-body">
                   <div className="gen-section">
-                    <h3>Ingredients</h3>
+                    <h3>{t("ingredients")}</h3>
                     <ul className="gen-ing-list">
                       {(genRecipe.ingredients || []).map((ing, i) => (
                         <li key={i} className="gen-ing-item">
@@ -597,7 +672,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                     </ul>
                   </div>
                   <div className="gen-section">
-                    <h3>Instructions</h3>
+                    <h3>{t("instructions")}</h3>
                     <ol className="gen-steps">
                       {(genRecipe.steps || []).map((step, i) => (
                         <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
@@ -666,7 +741,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                 <div className="recipe-grid">
                   {aiResults.map(r => (
                     <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason}
-                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin} />
+                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                      onAddToMealPlan={onAddToMealPlan} />
                   ))}
                 </div>
               </div>
@@ -688,9 +764,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               </h2>
             )}
 
-            {loading && !aiLoading && (
-              <div className="state-center"><div className="spinner" /><p>Finding recipes…</p></div>
-            )}
+            {loading && !aiLoading && <SkeletonGrid />}
 
             {!loading && results.length > 0 && (
               <div className="recipe-grid">
@@ -698,7 +772,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                   <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
                     matchCount={mode === "ingredients" ? r.match_count : null}
                     requestedCount={mode === "ingredients" ? r.requested_count : null}
-                    isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin} />
+                    isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                    onAddToMealPlan={onAddToMealPlan} />
                 ))}
               </div>
             )}
@@ -710,7 +785,8 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
                   {partials.map(r => (
                     <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
                       matchCount={r.match_count} requestedCount={r.requested_count}
-                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin} />
+                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                      onAddToMealPlan={onAddToMealPlan} />
                   ))}
                 </div>
               </div>
@@ -720,7 +796,18 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onLogi
               <div className="state-center">
                 <div className="emoji">🍽️</div>
                 <h3>No recipes found</h3>
-                <p>Try different {mode === "ingredients" ? "ingredients" : "search terms"} or remove a filter.</p>
+                <p>
+                  {mode === "ingredients"
+                    ? "Try adding different ingredients, or use fewer to broaden your search."
+                    : "Try a different dish name, or browse all recipes by clearing your search."}
+                </p>
+                <button
+                  className="search-btn"
+                  style={{ marginTop: "1.5rem", display: "inline-block", width: "auto", padding: ".65rem 1.75rem" }}
+                  onClick={() => { setSearched(false); setResults([]); setQuery(""); setPills([]); loadBrowse(); }}
+                >
+                  Browse all recipes
+                </button>
               </div>
             )}
 

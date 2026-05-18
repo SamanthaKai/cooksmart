@@ -60,6 +60,8 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [dietary, setDietary]                 = useState([]);
   const [allergies, setAllergies]             = useState([]);
   const [preferredCuisine, setPreferredCuisine] = useState([]);
+  const [userType, setUserType]               = useState(user.user_type || "individual");
+  const [establishmentName, setEstablishmentName] = useState("");
 
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -141,9 +143,11 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
     api.getProfile()
       .then(data => {
         setName(data.user.name || "");
+        setUserType(data.user.user_type || "individual");
         setDietary(data.profile.dietary || []);
         setAllergies(data.profile.allergies || []);
         setPreferredCuisine(data.profile.preferred_cuisine || []);
+        setEstablishmentName(data.profile.establishment_name || "");
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -159,7 +163,8 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
         name,
         dietary,
         allergies,
-        preferred_cuisine: preferredCuisine,
+        preferred_cuisine:  preferredCuisine,
+        establishment_name: establishmentName,
       });
       onUserUpdate(data.user);
       setSuccess(true);
@@ -192,8 +197,14 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
         <div className="profile-header-card">
           <div className="profile-avatar">{initials || "?"}</div>
           <div>
+            {userType === "establishment" && establishmentName && (
+              <p className="profile-establishment-name">{establishmentName}</p>
+            )}
             <h1 className="profile-name">{user.name}</h1>
             <p className="profile-email">{user.email}</p>
+            <span className={`account-type-badge account-type-badge--${userType}`}>
+              {userType === "establishment" ? "🏢 Establishment" : "👤 Personal"}
+            </span>
           </div>
         </div>
 
@@ -207,6 +218,27 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
             {/* Personal Info */}
             <div className="profile-section">
               <h2 className="profile-section-title">Personal Info</h2>
+              <div className="profile-field">
+                <label className="profile-label">Account Type</label>
+                <p className="profile-hint" style={{ marginTop: 0 }}>
+                  <span className={`account-type-badge account-type-badge--${userType}`}>
+                    {userType === "establishment" ? "🏢 Establishment" : "👤 Personal"}
+                  </span>
+                </p>
+              </div>
+              {userType === "establishment" && (
+                <div className="profile-field">
+                  <label className="profile-label">Establishment Name</label>
+                  <input
+                    className="profile-input"
+                    type="text"
+                    value={establishmentName}
+                    onChange={e => setEstablishmentName(e.target.value)}
+                    placeholder="Your restaurant, hotel, or business name"
+                    autoComplete="organization"
+                  />
+                </div>
+              )}
               <div className="profile-field">
                 <label className="profile-label">Display Name</label>
                 <input

@@ -14,6 +14,7 @@ from routes.profile import profile_bp
 from routes.nlp import nlp_bp
 from routes.interactions import interactions_bp
 from routes.generated_recipes import gen_recipes_bp
+from routes.mealplan import mealplan_bp
 
 app = Flask(__name__)
 
@@ -32,8 +33,9 @@ app.register_blueprint(profile_bp,     url_prefix='/api')
 app.register_blueprint(nlp_bp,          url_prefix='/api')
 app.register_blueprint(interactions_bp,   url_prefix='/api')
 app.register_blueprint(gen_recipes_bp,   url_prefix='/api')
+app.register_blueprint(mealplan_bp,      url_prefix='/api')
 
-_USER_ROUTE_PREFIXES = ('/api/profile', '/api/generated-recipes', '/api/interactions', '/api/auth')
+_USER_ROUTE_PREFIXES = ('/api/profile', '/api/generated-recipes', '/api/interactions', '/api/auth', '/api/mealplan')
 
 @app.after_request
 def set_cache_headers(response):

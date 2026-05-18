@@ -3,6 +3,8 @@ import Home from "./pages/Home";
 import RecipeDetail from "./pages/RecipeDetail";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
+import MealPlanPage from "./pages/MealPlanPage";
+import Footer from "./components/Footer";
 import { api } from "./api/client";
 import "./index.css";
 
@@ -88,6 +90,13 @@ export default function App() {
     } catch {}
   }
 
+  async function handleAddToMealPlan(recipeId, day) {
+    if (!user) { setShowLoginModal(true); return; }
+    try {
+      await api.addToMealPlan(recipeId, day);
+    } catch {}
+  }
+
   if (authLoading) {
     return (
       <div className="app" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -98,19 +107,41 @@ export default function App() {
 
   // Full-page login (navigated to directly)
   if (page === "login") {
-    return <LoginPage onLogin={handleLogin} onBack={() => setPage("home")} />;
+    return (
+      <>
+        <LoginPage onLogin={handleLogin} onBack={() => setPage("home")} />
+        <Footer />
+      </>
+    );
   }
 
   // Profile — requires login
   if (page === "profile") {
     if (!user) { setPage("login"); return null; }
     return (
-      <ProfilePage
-        user={user}
-        onBack={() => setPage("home")}
-        onUserUpdate={updatedUser => setUser(updatedUser)}
-        onSelectRecipe={handleSelectRecipe}
-      />
+      <>
+        <ProfilePage
+          user={user}
+          onBack={() => setPage("home")}
+          onUserUpdate={updatedUser => setUser(updatedUser)}
+          onSelectRecipe={handleSelectRecipe}
+        />
+        <Footer />
+      </>
+    );
+  }
+
+  // Meal Plan — requires login
+  if (page === "mealplan") {
+    if (!user) { setPage("login"); return null; }
+    return (
+      <>
+        <MealPlanPage
+          onBack={() => setPage("home")}
+          onSelectRecipe={handleSelectRecipe}
+        />
+        <Footer />
+      </>
     );
   }
 
@@ -125,10 +156,12 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onProfile={() => setPage("profile")}
+          onMealPlan={() => setPage("mealplan")}
           onLogin={() => setPage("login")}
           savedIds={savedIds}
           onToggleSave={handleToggleSave}
           onRequestLogin={requestLogin}
+          onAddToMealPlan={handleAddToMealPlan}
         />
       </div>
 
@@ -143,9 +176,12 @@ export default function App() {
             onToggleSave={handleToggleSave}
             onToggleLike={handleToggleLike}
             onRequestLogin={requestLogin}
+            onAddToMealPlan={handleAddToMealPlan}
           />
         </div>
       )}
+
+      <Footer />
 
       {/* ── Login modal — shown when guest taps save/like ── */}
       {showLoginModal && (

@@ -34,6 +34,7 @@ def ensure_profile_table():
             updated_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
     """)
+    execute("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS establishment_name VARCHAR(255)")
     _profile_table_ready = True
 
 
@@ -52,11 +53,12 @@ def require_auth():
 
 def _profile_dict(profile_row):
     if not profile_row:
-        return {"dietary": [], "allergies": [], "preferred_cuisine": []}
+        return {"dietary": [], "allergies": [], "preferred_cuisine": [], "establishment_name": ""}
     return {
-        "dietary":           list(profile_row["dietary"]           or []),
-        "allergies":         list(profile_row["allergies"]         or []),
-        "preferred_cuisine": list(profile_row["preferred_cuisine"] or []),
+        "dietary":            list(profile_row["dietary"]           or []),
+        "allergies":          list(profile_row["allergies"]         or []),
+        "preferred_cuisine":  list(profile_row["preferred_cuisine"] or []),
+        "establishment_name": profile_row.get("establishment_name") or "",
     }
 
 
@@ -70,14 +72,17 @@ def get_profile():
     ensure_profile_table()
 
     user = query(
-        "SELECT id, name, email, created_at FROM users WHERE id = %s",
+        "SELECT id, name, email, created_at, user_type FROM users WHERE id = %s",
         (user_id,), many=False
     )
     if not user:
         return jsonify({"error": "User not found."}), 404
 
+    u = dict(user)
+    u['user_type'] = u.get('user_type') or 'individual'
+
     profile = query(
-        "SELECT dietary, allergies, preferred_cuisine FROM user_profiles WHERE user_id = %s",
+        "SELECT dietary, allergies, preferred_cuisine, establishment_name FROM user_profiles WHERE user_id = %s",
         (user_id,), many=False
     )
     if not profile:
@@ -88,7 +93,7 @@ def get_profile():
         profile = None
 
     return jsonify({
-        "user":    dict(user),
+        "user":    u,
         "profile": _profile_dict(profile),
     })
 
@@ -110,40 +115,46 @@ def update_profile():
         execute("UPDATE users SET name = %s WHERE id = %s", (name, user_id))
 
     # Upsert profile preferences
-    dietary           = data.get("dietary")
-    allergies         = data.get("allergies")
-    preferred_cuisine = data.get("preferred_cuisine")
+    dietary            = data.get("dietary")
+    allergies          = data.get("allergies")
+    preferred_cuisine  = data.get("preferred_cuisine")
+    establishment_name = data.get("establishment_name")  # None = not sent, "" = clear, "X" = update
 
-    if any(v is not None for v in [dietary, allergies, preferred_cuisine]):
+    if any(v is not None for v in [dietary, allergies, preferred_cuisine, establishment_name]):
         execute(
             """
-            INSERT INTO user_profiles (user_id, dietary, allergies, preferred_cuisine, updated_at)
-            VALUES (%s, %s, %s, %s, NOW())
+            INSERT INTO user_profiles (user_id, dietary, allergies, preferred_cuisine, establishment_name, updated_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
-                dietary           = EXCLUDED.dietary,
-                allergies         = EXCLUDED.allergies,
-                preferred_cuisine = EXCLUDED.preferred_cuisine,
-                updated_at        = NOW()
+                dietary            = EXCLUDED.dietary,
+                allergies          = EXCLUDED.allergies,
+                preferred_cuisine  = EXCLUDED.preferred_cuisine,
+                establishment_name = COALESCE(EXCLUDED.establishment_name, user_profiles.establishment_name),
+                updated_at         = NOW()
             """,
             (
                 user_id,
                 dietary           if dietary           is not None else [],
                 allergies         if allergies         is not None else [],
                 preferred_cuisine if preferred_cuisine is not None else [],
+                establishment_name,
             )
         )
 
     # Return updated data
     user = query(
-        "SELECT id, name, email, created_at FROM users WHERE id = %s",
+        "SELECT id, name, email, created_at, user_type FROM users WHERE id = %s",
         (user_id,), many=False
     )
+    u = dict(user)
+    u['user_type'] = u.get('user_type') or 'individual'
+
     profile = query(
-        "SELECT dietary, allergies, preferred_cuisine FROM user_profiles WHERE user_id = %s",
+        "SELECT dietary, allergies, preferred_cuisine, establishment_name FROM user_profiles WHERE user_id = %s",
         (user_id,), many=False
     )
 
     return jsonify({
-        "user":    dict(user),
+        "user":    u,
         "profile": _profile_dict(profile),
     })

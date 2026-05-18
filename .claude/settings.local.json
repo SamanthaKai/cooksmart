@@ -4,7 +4,14 @@
       "Bash(python3 -c ' *)",
       "Bash(npm install *)",
       "Bash(npm run *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(grep -E \"\\\\.py$|\\\\.txt$|\\\\.md$\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('routes/mealplan.py'\\); py_compile.compile\\('app.py'\\); print\\('syntax OK'\\)\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\kissa\\\\OneDrive\\\\Desktop\\\\Desk\\\\CookSmart\" -Force)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(taskkill /f /im python.exe)",
+      "Bash(start /b python app.py)",
+      "Bash(git add *)"
     ]
   }
 }

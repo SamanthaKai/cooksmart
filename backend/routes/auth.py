@@ -40,7 +40,7 @@ def get_serializer():
 
 
 def ensure_users_table():
-    """Create users table and add verification columns idempotently."""
+    """Create users table and add columns idempotently."""
     global _table_ready
     if _table_ready:
         return
@@ -56,7 +56,27 @@ def ensure_users_table():
     execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified       BOOLEAN                  DEFAULT FALSE")
     execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255)")
     execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires_at  TIMESTAMP WITH TIME ZONE")
+    execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type         VARCHAR(20)              DEFAULT 'individual'")
     _table_ready = True
+
+
+def _ensure_profile_for_registration(user_id, establishment_name):
+    """Pre-create a profile row at registration time to store establishment_name."""
+    execute("""
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            dietary           TEXT[]   NOT NULL DEFAULT '{}',
+            allergies         TEXT[]   NOT NULL DEFAULT '{}',
+            preferred_cuisine TEXT[]   NOT NULL DEFAULT '{}',
+            updated_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    """)
+    execute("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS establishment_name VARCHAR(255)")
+    execute(
+        """INSERT INTO user_profiles (user_id, establishment_name) VALUES (%s, %s)
+           ON CONFLICT (user_id) DO UPDATE SET establishment_name = EXCLUDED.establishment_name""",
+        (user_id, establishment_name or None)
+    )
 
 
 def make_token(user_id, email):
@@ -110,10 +130,15 @@ def send_verification_email(to_email, ver_token):
 @auth_bp.route('/auth/register', methods=['POST'])
 def register():
     ensure_users_table()
-    data     = request.get_json(force=True) or {}
-    name     = data.get('name', '').strip()
-    email    = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    data               = request.get_json(force=True) or {}
+    name               = data.get('name', '').strip()
+    email              = data.get('email', '').strip().lower()
+    password           = data.get('password', '')
+    user_type          = data.get('user_type', 'individual').strip()
+    establishment_name = data.get('establishment_name', '').strip()
+
+    if user_type not in ('individual', 'establishment'):
+        user_type = 'individual'
 
     if not name or not email or not password:
         return jsonify({'error': 'Name, email and password are required.'}), 400
@@ -121,6 +146,8 @@ def register():
         return jsonify({'error': 'Please enter a valid email address.'}), 400
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters.'}), 400
+    if user_type == 'establishment' and not establishment_name:
+        return jsonify({'error': 'Establishment name is required for business accounts.'}), 400
 
     existing = query("SELECT id FROM users WHERE email = %s", (email,), many=False)
     if existing:
@@ -130,11 +157,12 @@ def register():
     ver_token  = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
 
-    execute(
-        """INSERT INTO users (name, email, password_hash, verification_token, token_expires_at)
-           VALUES (%s, %s, %s, %s, %s)""",
-        (name, email, pw_hash, ver_token, expires_at)
+    result = execute(
+        """INSERT INTO users (name, email, password_hash, user_type, verification_token, token_expires_at)
+           VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+        (name, email, pw_hash, user_type, ver_token, expires_at)
     )
+    _ensure_profile_for_registration(result['id'], establishment_name)
     send_verification_email(email, ver_token)
     return jsonify({'message': 'Registration successful. Please check your email to verify your account.'}), 201
 
@@ -182,7 +210,7 @@ def login():
         return jsonify({'error': 'Email and password are required.'}), 400
 
     user = query(
-        "SELECT id, name, email, password_hash, is_verified FROM users WHERE email = %s",
+        "SELECT id, name, email, password_hash, is_verified, user_type FROM users WHERE email = %s",
         (email,), many=False
     )
     if not user or not check_password_hash(user['password_hash'], password):
@@ -192,7 +220,12 @@ def login():
         return jsonify({'error': 'Please verify your email before logging in.'}), 403
 
     token = make_token(user['id'], user['email'])
-    return jsonify({'token': token, 'user': {'id': user['id'], 'name': user['name'], 'email': user['email']}})
+    return jsonify({'token': token, 'user': {
+        'id':        user['id'],
+        'name':      user['name'],
+        'email':     user['email'],
+        'user_type': user['user_type'] or 'individual',
+    }})
 
 
 # ── Me (verify token) ─────────────────────────────────────────────────────────
@@ -206,9 +239,14 @@ def me():
 
     try:
         payload = verify_token(token)
-        user = query("SELECT id, name, email FROM users WHERE id = %s", (payload['id'],), many=False)
+        user = query(
+            "SELECT id, name, email, user_type FROM users WHERE id = %s",
+            (payload['id'],), many=False
+        )
         if not user:
             return jsonify({'error': 'User not found.'}), 404
-        return jsonify({'user': dict(user)})
+        u = dict(user)
+        u['user_type'] = u.get('user_type') or 'individual'
+        return jsonify({'user': u})
     except (BadSignature, SignatureExpired):
         return jsonify({'error': 'Invalid or expired token.'}), 401

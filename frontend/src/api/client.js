@@ -65,6 +65,11 @@ export const api = {
   getGeneratedRecipes:   ()       => req("/generated-recipes"),
   deleteGeneratedRecipe: (id)     => req(`/generated-recipes/${id}`, { method: "DELETE" }),
 
+  // ── Meal Plan ─────────────────────────────────────────────────────────────
+  getMealPlan:        ()                       => req("/mealplan"),
+  addToMealPlan:      (recipe_id, day_of_week) => JSON_POST("/mealplan", { recipe_id, day_of_week }),
+  removeFromMealPlan: (id)                     => req(`/mealplan/${id}`, { method: "DELETE" }),
+
   // ── Interactions ──────────────────────────────────────────────────────────
   getInteractions: ()                    => req("/interactions"),
   toggleInteraction: (recipe_id, type)   => JSON_POST("/interactions/toggle", { recipe_id, type }),

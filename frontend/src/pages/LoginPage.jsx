@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { useLang } from "../context/LanguageContext";
 
 function EyeIcon({ open }) {
   return open ? (
@@ -17,6 +18,7 @@ function EyeIcon({ open }) {
 }
 
 export default function LoginPage({ onLogin, onBack, isModal = false }) {
+  const { t } = useLang();
   const [tab, setTab]                   = useState("login");   // "login" | "register"
   const [name, setName]                 = useState("");
   const [email, setEmail]               = useState("");
@@ -25,6 +27,8 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
   const [verificationSent, setVerificationSent] = useState(false);
+  const [userType, setUserType]         = useState("individual");   // "individual" | "establishment"
+  const [establishmentName, setEstablishmentName] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -32,7 +36,7 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
     setLoading(true);
     try {
       if (tab === "register") {
-        await api.register({ name, email, password });
+        await api.register({ name, email, password, user_type: userType, establishment_name: establishmentName });
         setVerificationSent(true);
       } else {
         const data = await api.login({ email, password });
@@ -53,6 +57,8 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
     setEmail("");
     setPassword("");
     setShowPw(false);
+    setUserType("individual");
+    setEstablishmentName("");
   }
 
   if (isModal) {
@@ -74,15 +80,38 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
           <>
         <p className="login-tagline">Sign in to save and like recipes</p>
         <div className="login-tabs">
-          <button className={`login-tab${tab === "login" ? " active" : ""}`} onClick={() => switchTab("login")}>Sign In</button>
-          <button className={`login-tab${tab === "register" ? " active" : ""}`} onClick={() => switchTab("register")}>Create Account</button>
+          <button className={`login-tab${tab === "login" ? " active" : ""}`} onClick={() => switchTab("login")}>{t("sign_in")}</button>
+          <button className={`login-tab${tab === "register" ? " active" : ""}`} onClick={() => switchTab("register")}>{t("create_account")}</button>
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
           {tab === "register" && (
-            <div className="login-field">
-              <label className="login-label">Full Name</label>
-              <input className="login-input" type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} required autoComplete="name" autoFocus />
-            </div>
+            <>
+              <div className="login-field">
+                <label className="login-label">Who are you cooking for?</label>
+                <div className="user-type-cards">
+                  <button type="button" className={`user-type-card${userType === "individual" ? " active" : ""}`} onClick={() => setUserType("individual")}>
+                    <span className="user-type-icon">👤</span>
+                    <span className="user-type-title">Personal</span>
+                    <span className="user-type-desc">I cook for myself or my family</span>
+                  </button>
+                  <button type="button" className={`user-type-card${userType === "establishment" ? " active" : ""}`} onClick={() => setUserType("establishment")}>
+                    <span className="user-type-icon">🏢</span>
+                    <span className="user-type-title">Establishment</span>
+                    <span className="user-type-desc">Restaurant, hotel, or food business</span>
+                  </button>
+                </div>
+              </div>
+              {userType === "establishment" && (
+                <div className="login-field">
+                  <label className="login-label">Establishment Name</label>
+                  <input className="login-input" type="text" placeholder="e.g. Café Nile, Hotel Serena" value={establishmentName} onChange={e => setEstablishmentName(e.target.value)} required autoComplete="organization" />
+                </div>
+              )}
+              <div className="login-field">
+                <label className="login-label">Full Name</label>
+                <input className="login-input" type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} required autoComplete="name" />
+              </div>
+            </>
           )}
           <div className="login-field">
             <label className="login-label">Email Address</label>
@@ -97,7 +126,7 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
           </div>
           {error && <div className="login-error">{error}</div>}
           <button className="login-btn" type="submit" disabled={loading}>
-            {loading ? (tab === "register" ? "Creating account…" : "Signing in…") : (tab === "register" ? "Create Account" : "Sign In")}
+            {loading ? (tab === "register" ? t("creating_acct") : t("signing_in")) : (tab === "register" ? t("create_account") : t("sign_in"))}
           </button>
         </form>
         <p className="login-switch">
@@ -138,32 +167,70 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
             className={`login-tab${tab === "login" ? " active" : ""}`}
             onClick={() => switchTab("login")}
           >
-            Sign In
+            {t("sign_in")}
           </button>
           <button
             className={`login-tab${tab === "register" ? " active" : ""}`}
             onClick={() => switchTab("register")}
           >
-            Create Account
+            {t("create_account")}
           </button>
         </div>
 
         {/* Form */}
         <form className="login-form" onSubmit={handleSubmit}>
           {tab === "register" && (
-            <div className="login-field">
-              <label className="login-label">Full Name</label>
-              <input
-                className="login-input"
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                autoComplete="name"
-                autoFocus
-              />
-            </div>
+            <>
+              <div className="login-field">
+                <label className="login-label">Who are you cooking for?</label>
+                <div className="user-type-cards">
+                  <button
+                    type="button"
+                    className={`user-type-card${userType === "individual" ? " active" : ""}`}
+                    onClick={() => setUserType("individual")}
+                  >
+                    <span className="user-type-icon">👤</span>
+                    <span className="user-type-title">Personal</span>
+                    <span className="user-type-desc">I cook for myself or my family</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`user-type-card${userType === "establishment" ? " active" : ""}`}
+                    onClick={() => setUserType("establishment")}
+                  >
+                    <span className="user-type-icon">🏢</span>
+                    <span className="user-type-title">Establishment</span>
+                    <span className="user-type-desc">Restaurant, hotel, or food business</span>
+                  </button>
+                </div>
+              </div>
+              {userType === "establishment" && (
+                <div className="login-field">
+                  <label className="login-label">Establishment Name</label>
+                  <input
+                    className="login-input"
+                    type="text"
+                    placeholder="e.g. Café Nile, Hotel Serena"
+                    value={establishmentName}
+                    onChange={e => setEstablishmentName(e.target.value)}
+                    required
+                    autoComplete="organization"
+                  />
+                </div>
+              )}
+              <div className="login-field">
+                <label className="login-label">Full Name</label>
+                <input
+                  className="login-input"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                />
+              </div>
+            </>
           )}
 
           <div className="login-field">

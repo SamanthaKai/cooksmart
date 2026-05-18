@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 import { getRecipeImage } from "../utils/imageHelper";
 
 function RecipeImage({ recipe, emoji }) {
@@ -47,9 +48,6 @@ export default function RecipeCard({
   aiReason, matchCount, requestedCount,
   isSaved, onToggleSave,
 }) {
-  const allergyFlags = recipe.allergy_flags || [];
-  const dietaryFlags = recipe.dietary_flags || [];
-
   return (
     <div className="recipe-card" onClick={onClick}>
       <div className="card-img">
@@ -73,9 +71,6 @@ export default function RecipeCard({
         {recipe.local_name && recipe.local_name !== recipe.name && (
           <p className="card-local">{recipe.local_name}</p>
         )}
-        {recipe.description && recipe.description !== "MISSING" && (
-          <p className="card-desc">{recipe.description}</p>
-        )}
         {matchCount != null && (
           <p className="card-match" style={{ marginTop: ".5rem" }}>
             {requestedCount != null
@@ -85,31 +80,11 @@ export default function RecipeCard({
         )}
         {aiReason && <p className="card-ai-reason">{aiReason}</p>}
 
-        {/* Allergy warnings — red chips, one per triggered allergen */}
-        {allergyFlags.length > 0 && (
-          <div className="card-flags">
-            {allergyFlags.map(f => (
-              <span key={f} className="card-flag card-flag--allergy" title={`Contains ${f}`}>
-                ⚠ {f}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Dietary restriction warnings — amber chips */}
-        {dietaryFlags.length > 0 && (
-          <div className="card-flags">
-            {dietaryFlags.map(f => (
-              <span key={f} className="card-flag card-flag--dietary" title={`May not suit ${f} diet`}>
-                ✕ {f}
-              </span>
-            ))}
-          </div>
-        )}
-
         <div className="card-footer">
-          <span className="card-community">{recipe.community || "International"}</span>
           <span className="card-course">{recipe.course}</span>
+          {(recipe.cook_time || recipe.prep_time) && (
+            <span className="card-time">⏱ {recipe.cook_time ?? recipe.prep_time}m</span>
+          )}
         </div>
       </div>
     </div>

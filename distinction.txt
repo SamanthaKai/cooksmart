@@ -1,0 +1,106 @@
+INDIVIDUAL ACCOUNT
+
+Who is this? 
+Someone cooking at home — a student, a parent, someone managing a health condition, someone who just loves Ugandan food.
+
+What they care about:
+- What can I cook with what I have?
+- Is this food good for my health condition?
+- What should I eat this week?
+
+Their dashboard focuses on:
+- Personal meal planning (breakfast, lunch, dinner for the week)
+- Health-centered AI features — dietary customization for diabetes, hypertension, allergies
+- Saved and liked recipes
+- AI recipe generation from available ingredients
+- Shopping list for personal grocery runs
+
+How they pay:
+- Free tier: browse recipes, basic search
+- Premium (UGX 15,000/month): unlimited AI generation, health insights, meal planning, dietary customization
+
+---
+
+ESTABLISHMENT ACCOUNT
+
+Who is this?
+A restaurant, hotel, catering company, school canteen, or food vendor.
+
+What they care about:
+- Are all my cooks making the same dish the same way?
+- Can I train new staff quickly?
+- Can I manage my own recipes alongside the standard ones?
+
+Their dashboard focuses on:
+- Staff accounts — one admin account, multiple staff logins under one establishment
+- Recipe library management — add, edit, and standardize their own house recipes alongside the CookSmart database
+- Portion scaling for bulk — scale recipes for 50, 100, 200 servings
+- Weekly menu planning — plan the full restaurant menu by day
+- Bulk shopping list — aggregated ingredient order list for the week
+- Consistency tracking — which recipes are being used most, which staff accessed what
+- Customer health feature — when a customer mentions a dietary need, staff can pull up an adapted recipe instantly
+
+How they pay:
+- Starter (UGX 50,000/month): up to 3 staff accounts, full AI features, recipe library
+- Business (UGX 150,000/month): unlimited staff, bulk scaling, analytics, priority support
+- Enterprise: custom pricing for hotel chains and institutions
+
+---
+
+SIDE BY SIDE
+
+| Feature | Individual | Establishment |
+|---|---|---|
+| Recipe browsing | ✅ | ✅ |
+| AI recipe generation | ✅ | ✅ |
+| Health insights | ✅ Personal health | ✅ For customer requests |
+| Meal planning | Personal weekly meals | Full restaurant weekly menu |
+| Portion scaling | For family (2-10) | For bulk (10-500) |
+| Shopping list | Personal groceries | Bulk ingredient orders |
+| Staff accounts | ❌ | ✅ Multiple |
+| Recipe library | Save favourites | Manage own house recipes |
+| Analytics | ❌ | ✅ Usage and menu insights |
+| Pricing | UGX 15,000/month | From UGX 50,000/month |
+
+---
+
+THE PITCH LINE
+
+"For individuals, CookSmart is a personal health and cooking companion. For establishments, it is a kitchen management system that ensures every dish leaving your kitchen is consistent, standardized, and health-aware. One platform — built for both."
+
+---
+
+Claude Code Prompt to implement the split:
+
+```
+Implement two distinct account types in CookSmart: Individual and Establishment.
+
+1. REGISTRATION — Add a user type selection step before the registration form:
+"How will you use CookSmart?"
+- Individual — icon: person — "I cook for myself or my family"  
+- Establishment — icon: building — "I represent a restaurant or food business"
+
+If Establishment is selected show an additional required field: Establishment Name.
+
+Add user_type VARCHAR(20) DEFAULT 'individual' and establishment_name VARCHAR(255) to the users table via migration.
+
+2. INDIVIDUAL DASHBOARD — When user_type is 'individual':
+- Profile page header shows: "Welcome, [name]" with a personal cooking icon
+- Meal plan is labeled "Your Weekly Meal Plan"
+- Portion scaling defaults to 2-6 servings
+- Health insights are framed personally: "This is good for you if..."
+- No staff management section visible
+
+3. ESTABLISHMENT DASHBOARD — When user_type is 'establishment':
+- Profile page header shows the establishment name prominently with a restaurant icon
+- Meal plan is labeled "Your Weekly Menu"
+- Portion scaling defaults to 10-500 servings with a bulk toggle
+- Health insights are framed for customer service: "Suitable for customers with..."
+- Show a placeholder Staff Management section: "Manage your team — coming soon"
+- Show a placeholder Recipe Library section: "Your house recipes — coming soon"
+
+4. ACCOUNT TYPE BADGE — Show a small badge on the profile page indicating account type: "Personal Account" or "Business Account" with appropriate styling.
+
+5. Store user_type in the JWT token payload so the frontend can access it without an extra API call.
+
+Test on localhost. Do not break existing auth flow.
