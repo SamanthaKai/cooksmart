@@ -11,7 +11,10 @@
       "Bash(curl -s http://localhost:5000/api/health)",
       "Bash(taskkill /f /im python.exe)",
       "Bash(start /b python app.py)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node -e \"const l=require\\('./node_modules/lucide-react/dist/cjs/lucide-react.js'\\); const icons=['Soup','CookingPot','Popcorn','Drumstick','Sunrise','GlassWater','Cookie','UtensilsCrossed','Globe','LayoutGrid','Home','Search','CalendarDays','ChefHat','Heart','Clock','Utensils','Flame','Wine','Sun','Coffee','Globe2']; icons.forEach\\(i=>console.log\\(i, !!l[i]\\)\\)\")"
     ]
   }
 }

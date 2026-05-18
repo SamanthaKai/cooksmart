@@ -151,7 +151,7 @@ export default function MealPlanPage({ onBack, onSelectRecipe }) {
                               )}
                             </button>
                             <div style={{ fontSize: ".77rem", color: "var(--stone)", marginTop: "2px" }}>
-                              {[item.recipe.cuisine_type, item.recipe.course, item.recipe.servings && `${item.recipe.servings} servings`].filter(Boolean).join(" · ")}
+                              {[item.recipe.cuisine_type, item.recipe.course !== "sauce" ? item.recipe.course : null, item.recipe.servings && `${item.recipe.servings} servings`].filter(Boolean).join(" · ")}
                             </div>
                           </div>
                           <button

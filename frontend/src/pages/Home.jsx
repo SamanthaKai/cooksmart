@@ -2,8 +2,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
 import { useLang } from "../context/LanguageContext";
+import {
+  LayoutGrid, Globe, Soup, Utensils, Coffee, GlassWater, Cookie,
+  Home as HomeIcon, Search, CalendarDays, ChefHat, Heart,
+} from "lucide-react";
 
 const COURSES = ["main","soup","side","sauce","beverage","breakfast","snack","seasoning"];
+
+const CATEGORY_FILTERS = [
+  { label: "All Recipes", Icon: LayoutGrid, cuisine: "",       course: "" },
+  { label: "African",     Icon: Globe,      cuisine: "african", course: "" },
+  { label: "Soups",       Icon: Soup,       cuisine: "",       course: "soup" },
+  { label: "Main Dishes", Icon: Utensils,   cuisine: "",       course: "main" },
+  { label: "Breakfast",   Icon: Coffee,     cuisine: "",       course: "breakfast" },
+  { label: "Drinks",      Icon: GlassWater, cuisine: "",       course: "beverage" },
+  { label: "Snacks",      Icon: Cookie,     cuisine: "",       course: "snack" },
+];
 
 // ── PillInput must be defined at MODULE level ─────────────────────────────────
 // If defined inside Home, React treats it as a new component type on every
@@ -176,13 +190,12 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
   }, [menuOpen]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  async function handleNameSearch(e) {
-    e?.preventDefault();
-    if (!query.trim()) return;
+  async function searchByName(searchQuery) {
+    if (!searchQuery.trim()) return;
     setShowSuggest(false);
     setLoading(true); setSearched(true); setError("");
     try {
-      const data = await api.search({ q: query, cuisine, course, page: 1, per_page: 12 });
+      const data = await api.search({ q: searchQuery, cuisine, course, page: 1, per_page: 12 });
       setResults(data.results);
       setTotalPages(data.pages);
       setTotalCount(data.total);
@@ -192,6 +205,11 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleNameSearch(e) {
+    e?.preventDefault();
+    await searchByName(query);
   }
 
   async function handleIngSearch() {
@@ -423,10 +441,38 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
         </div>
       )}
 
+      {/* ── Secondary Nav ── */}
+      <div className="secondary-nav">
+        <div className="secondary-nav-inner">
+          <button className="snav-item" onClick={() => { setSearched(false); setMode("name"); setQuery(""); setCuisine(""); setCourse(""); }}>
+            <HomeIcon size={15} strokeWidth={1.8} /> Home
+          </button>
+          <button className="snav-item" onClick={() => { setMode("name"); setSearched(false); setQuery(""); }}>
+            <Search size={15} strokeWidth={1.8} /> Explore Recipes
+          </button>
+          <button className="snav-item" onClick={() => { setSearched(false); setCuisine(""); setCourse(""); setMode("name"); }}>
+            <LayoutGrid size={15} strokeWidth={1.8} /> Categories
+          </button>
+          {user && (
+            <>
+              <button className="snav-item" onClick={onMealPlan}>
+                <CalendarDays size={15} strokeWidth={1.8} /> Meal Planner
+              </button>
+              <button className="snav-item" onClick={onProfile}>
+                <ChefHat size={15} strokeWidth={1.8} /> My Recipes
+              </button>
+              <button className="snav-item" onClick={onProfile}>
+                <Heart size={15} strokeWidth={1.8} /> Favorites
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* ── Hero ── */}
       <div className="hero">
-        <h1>Discover African cuisine&nbsp;&amp; beyond</h1>
-        <p>Search by dish name, or tell us what's in your kitchen and we'll find something delicious.</p>
+        <h1>Good food. Made easy.<br />Made for you.</h1>
+        <p>Discover African recipes, get smart suggestions and cook with confidence.</p>
 
         {/* Mode toggle */}
         <div className="mode-toggle">
@@ -467,6 +513,14 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                 </div>
               )}
             </form>
+            <div className="popular-chips">
+              <span className="popular-label">Popular searches:</span>
+              {["Jollof Rice", "Matoke", "Chicken Stew", "Groundnut Soup", "Fried Plantain"].map(q => (
+                <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>
+                  {q}
+                </button>
+              ))}
+            </div>
             <div style={{ marginTop: "1rem" }}>
               <button className="search-btn" onClick={handleNameSearch} disabled={!query.trim()}>
                 {t("search_btn")}
@@ -714,21 +768,25 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
         {/* Browse / search results */}
         <>
           {!searched && (
-              <div className="filters">
-                <span className="filter-label">Cuisine:</span>
-                {["african","western"].map(c => (
-                  <button key={c} className={`filter-chip${cuisine === c ? " active" : ""}`}
-                    onClick={() => { setCuisine(cuisine === c ? "" : c); setPage(1); }}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </button>
-                ))}
-                <span className="filter-label" style={{ marginLeft: "8px" }}>Course:</span>
-                {COURSES.map(c => (
-                  <button key={c} className={`filter-chip${course === c ? " active" : ""}`}
-                    onClick={() => { setCourse(course === c ? "" : c); setPage(1); }}>
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </button>
-                ))}
+              <div className="category-section">
+                <h2 className="category-section-title">Browse by category</h2>
+                <div className="category-pills">
+                  {CATEGORY_FILTERS.map(cat => {
+                    const isActive = cat.cuisine === cuisine && cat.course === course;
+                    return (
+                      <button
+                        key={cat.label}
+                        className={`category-pill${isActive ? " active" : ""}`}
+                        onClick={() => { setCuisine(cat.cuisine); setCourse(cat.course); setPage(1); }}
+                      >
+                        <div className="category-pill-icon-wrap">
+                          <cat.Icon size={22} strokeWidth={1.8} />
+                        </div>
+                        <span className="category-pill-label">{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
