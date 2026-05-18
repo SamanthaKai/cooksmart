@@ -1,27 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
+import LeftSidebar from "../components/LeftSidebar";
+import RightSidebar from "../components/RightSidebar";
 import { useLang } from "../context/LanguageContext";
 import {
-  LayoutGrid, Globe, Soup, Utensils, Coffee, GlassWater, Cookie,
-  Home as HomeIcon, Search, CalendarDays, ChefHat, Heart,
+  LayoutGrid, Globe, Globe2, Soup, Utensils, UtensilsCrossed,
+  GlassWater, Coffee, Cookie, Leaf, Bell, ChevronDown,
 } from "lucide-react";
 
-const COURSES = ["main","soup","side","sauce","beverage","breakfast","snack","seasoning"];
-
+// ── Category filters — all 10, typed for combined cuisine+course handling ────
 const CATEGORY_FILTERS = [
-  { label: "All Recipes", Icon: LayoutGrid, cuisine: "",       course: "" },
-  { label: "African",     Icon: Globe,      cuisine: "african", course: "" },
-  { label: "Soups",       Icon: Soup,       cuisine: "",       course: "soup" },
-  { label: "Main Dishes", Icon: Utensils,   cuisine: "",       course: "main" },
-  { label: "Breakfast",   Icon: Coffee,     cuisine: "",       course: "breakfast" },
-  { label: "Drinks",      Icon: GlassWater, cuisine: "",       course: "beverage" },
-  { label: "Snacks",      Icon: Cookie,     cuisine: "",       course: "snack" },
+  { label: "All Recipes", Icon: LayoutGrid,      type: "all" },
+  { label: "African",     Icon: Globe,           type: "cuisine", value: "african" },
+  { label: "Western",     Icon: Globe2,          type: "cuisine", value: "western" },
+  { label: "Main",        Icon: Utensils,        type: "course",  value: "main" },
+  { label: "Soup",        Icon: Soup,            type: "course",  value: "soup" },
+  { label: "Side",        Icon: UtensilsCrossed, type: "course",  value: "side" },
+  { label: "Beverage",    Icon: GlassWater,      type: "course",  value: "beverage" },
+  { label: "Breakfast",   Icon: Coffee,          type: "course",  value: "breakfast" },
+  { label: "Snack",       Icon: Cookie,          type: "course",  value: "snack" },
+  { label: "Seasoning",   Icon: Leaf,            type: "course",  value: "seasoning" },
 ];
 
-// ── PillInput must be defined at MODULE level ─────────────────────────────────
-// If defined inside Home, React treats it as a new component type on every
-// render, unmounting the input and killing keyboard focus on every keystroke.
+// PillInput at module level — avoids remount on every parent render
 function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
                      onIngChange, onKeyDown, onFocus, onSuggestPick, onRemovePill }) {
   return (
@@ -99,23 +101,17 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
   const [genRecipe, setGenRecipe]   = useState(null);
   const [generating, setGenerating] = useState(false);
 
-  // ── AI Generate CTA (bottom section) ─────────────────────────────────────
-  const [genOpen, setGenOpen]   = useState(false);
-  const [genText, setGenText]   = useState("");
-  const [genPills, setGenPills] = useState([]);
-  const [genLoading, setGenLoading] = useState(false);
+  const [genOpen, setGenOpen]         = useState(false);
+  const [genText, setGenText]         = useState("");
+  const [genPills, setGenPills]       = useState([]);
+  const [genLoading, setGenLoading]   = useState(false);
 
-  // Guest generation limit — 2 free per session, tracked in localStorage
   const [genCount, setGenCount]       = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
   const [genLimitHit, setGenLimitHit] = useState(false);
-
   const [genClarifyMsg, setGenClarifyMsg] = useState("");
 
-  // Save-to-profile state — single recipe
   const [genSaved, setGenSaved]   = useState(false);
   const [genSaving, setGenSaving] = useState(false);
-
-  // Save-to-profile state — combo meal (indexed by section position)
   const [genSectionSaved, setGenSectionSaved]   = useState([]);
   const [genSectionSaving, setGenSectionSaving] = useState([]);
 
@@ -136,9 +132,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
       if (cuisine) params.cuisine = cuisine;
       if (course)  params.course  = course;
       const data = await api.recipes(params);
-      setResults(data.results);
-      setTotalPages(data.pages);
-      setTotalCount(data.total);
+      setResults(data.results ?? []);
+      setTotalPages(data.pages ?? 1);
+      setTotalCount(data.total ?? 0);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -148,34 +144,29 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
 
   useEffect(() => { loadBrowse(); }, [loadBrowse]);
 
-  // ── Name auto-suggest (debounced) ─────────────────────────────────────────
+  // ── Name auto-suggest ─────────────────────────────────────────────────────
   useEffect(() => {
     if (mode !== "name" || query.length < 2) { setSuggestions([]); return; }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const raw = await api.suggest(query);
         const q = query.toLowerCase();
-        // Client-side word-boundary filter: 'tea' must start or follow a space
-        // in the name — prevents 'Steamed Yams' matching because 's-t-e-a-med'
-        // contains the substring 'tea' in the middle of a word.
-        setSuggestions(
-          raw.filter(s => {
-            const name = s.name.toLowerCase();
-            return name.startsWith(q) || name.includes(' ' + q);
-          })
-        );
+        setSuggestions(raw.filter(s => {
+          const name = s.name.toLowerCase();
+          return name.startsWith(q) || name.includes(' ' + q);
+        }));
       } catch {}
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [query, mode]);
 
-  // ── Ingredient auto-suggest (debounced) ───────────────────────────────────
+  // ── Ingredient auto-suggest ───────────────────────────────────────────────
   useEffect(() => {
     if (mode !== "ingredients" || ingInput.length < 2) { setIngSuggest([]); return; }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try { setIngSuggest(await api.ingredientSuggest(ingInput)); } catch {}
     }, 250);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [ingInput, mode]);
 
   // ── Close dropdowns on outside click ─────────────────────────────────────
@@ -183,7 +174,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     function handle(e) {
       if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
       if (ingRef.current     && !ingRef.current.contains(e.target))     setShowIngSug(false);
-      if (menuOpen && !e.target.closest('.navbar') && !e.target.closest('.mobile-menu')) setMenuOpen(false);
+      if (menuOpen && !e.target.closest('.home-topbar') && !e.target.closest('.mobile-menu')) setMenuOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
@@ -196,9 +187,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     setLoading(true); setSearched(true); setError("");
     try {
       const data = await api.search({ q: searchQuery, cuisine, course, page: 1, per_page: 12 });
-      setResults(data.results);
-      setTotalPages(data.pages);
-      setTotalCount(data.total);
+      setResults(data.results ?? []);
+      setTotalPages(data.pages ?? 1);
+      setTotalCount(data.total ?? 0);
       setPage(1);
     } catch (e) {
       setError(e.message);
@@ -224,9 +215,7 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
         setResults(dbData.value.exact_matches   || []);
         setPartials(dbData.value.partial_matches || []);
       }
-      if (aiData.status === "fulfilled") {
-        setAiResults(aiData.value.suggestions || []);
-      }
+      if (aiData.status === "fulfilled") setAiResults(aiData.value.suggestions || []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -235,19 +224,12 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
   }
 
   async function handleGenerate() {
-    // Enforce guest generation limit
-    if (!user && genCount >= 2) {
-      setGenLimitHit(true);
-      return;
-    }
-
+    if (!user && genCount >= 2) { setGenLimitHit(true); return; }
     let ingredients = [...genPills];
     const context = genText.trim();
-    if (!ingredients.length && !context) {
-      setError("Describe what you have or add some ingredients."); return;
-    }
-    setGenRecipe(null); setGenSaved(false); setGenSectionSaved([]); setGenSectionSaving([]); setGenLoading(true); setError(""); setGenClarifyMsg("");
-    // NLP extraction if user typed plain text and no pills yet
+    if (!ingredients.length && !context) { setError("Describe what you have or add some ingredients."); return; }
+    setGenRecipe(null); setGenSaved(false); setGenSectionSaved([]); setGenSectionSaving([]);
+    setGenLoading(true); setError(""); setGenClarifyMsg("");
     if (context && !ingredients.length) {
       try {
         const data = await api.nlpExtract(context);
@@ -255,20 +237,13 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
         if (ingredients.length) setGenPills(ingredients);
       } catch {}
     }
-    if (!ingredients.length) {
-      setError("Could you describe a bit more what you'd like to cook?");
-      setGenLoading(false); return;
-    }
+    if (!ingredients.length) { setError("Could you describe a bit more what you'd like to cook?"); setGenLoading(false); return; }
     setGenerating(true);
     try {
       const data = await api.aiGenerate(ingredients, context);
-      if (data.clarify) {
-        setGenClarifyMsg(data.message);
-        return;
-      }
+      if (data.clarify) { setGenClarifyMsg(data.message); return; }
       setGenRecipe(data.recipe);
       setGenOpen(false);
-      // Increment guest counter only on a real recipe
       if (!user) {
         const next = genCount + 1;
         setGenCount(next);
@@ -284,14 +259,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
   async function handleSaveRecipe() {
     if (!user || !genRecipe) return;
     setGenSaving(true);
-    try {
-      await api.saveGeneratedRecipe(genRecipe);
-      setGenSaved(true);
-    } catch (e) {
-      setError(e.message || "Failed to save recipe.");
-    } finally {
-      setGenSaving(false);
-    }
+    try { await api.saveGeneratedRecipe(genRecipe); setGenSaved(true); }
+    catch (e) { setError(e.message || "Failed to save recipe."); }
+    finally { setGenSaving(false); }
   }
 
   async function handleSaveSectionRecipe(sectionRecipe, idx) {
@@ -311,34 +281,36 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     const n = name.trim().toLowerCase();
     if (!n) return;
     setPills(p => p.includes(n) ? p : [...p, n]);
-    setIngInput("");
-    setIngSuggest([]);
-    setShowIngSug(false);
+    setIngInput(""); setIngSuggest([]); setShowIngSug(false);
   }, []);
 
   const handleIngKeyDown = useCallback((e) => {
-    if ((e.key === "Enter" || e.key === ",") && ingInput.trim()) {
-      e.preventDefault();
-      addPill(ingInput);
-    }
-    if (e.key === "Backspace" && !ingInput) {
-      setPills(p => p.slice(0, -1));
-    }
+    if ((e.key === "Enter" || e.key === ",") && ingInput.trim()) { e.preventDefault(); addPill(ingInput); }
+    if (e.key === "Backspace" && !ingInput) setPills(p => p.slice(0, -1));
   }, [ingInput, addPill]);
 
-  const handleIngChange = useCallback((e) => {
-    setIngInput(e.target.value);
-    setShowIngSug(true);
-  }, []);
-
-  const handleIngFocus = useCallback(() => setShowIngSug(true), []);
+  const handleIngChange  = useCallback((e) => { setIngInput(e.target.value); setShowIngSug(true); }, []);
+  const handleIngFocus   = useCallback(() => setShowIngSug(true), []);
   const handleRemovePill = useCallback((p) => setPills(pills => pills.filter(x => x !== p)), []);
 
   function switchMode(m) {
     setMode(m); setSearched(false);
     setResults([]); setAiResults([]); setPartials([]);
-    setError(""); setQuery(""); setPills([]);
-    setIngInput("");
+    setError(""); setQuery(""); setPills([]); setIngInput("");
+  }
+
+  function isCatActive(cat) {
+    if (cat.type === "all")     return !cuisine && !course;
+    if (cat.type === "cuisine") return cuisine === cat.value;
+    return course === cat.value;
+  }
+
+  function handleCatClick(cat) {
+    if (cat.type === "all")          { setCuisine(""); setCourse(""); }
+    else if (cat.type === "cuisine") { setCuisine(cat.value); setCourse(""); }
+    else                             { setCourse(cat.value); setCuisine(""); }
+    setPage(1);
+    setSearched(false);
   }
 
   const emoji = (r) => {
@@ -353,7 +325,6 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     if (n.includes("egg")) return "🥚";
     if (n.includes("salad")) return "🥗";
     if (n.includes("bread") || n.includes("chapati")) return "🫓";
-    if (n.includes("tea") || n.includes("beverage") || n.includes("juice")) return "☕";
     if (r.course === "beverage") return "🥤";
     if (r.cuisine_type === "african") return "🌍";
     return "🍽️";
@@ -363,59 +334,59 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
     : pills.length === 1 ? "Add 1 more ingredient"
     : `${pills.length} ingredients added — ready to search!`;
 
-  return (
-    <div className="app">
+  const activePage = searched ? "explore" : (cuisine || course) ? "categories" : "home";
 
-      {/* ── Navbar ── */}
-      <nav className="navbar">
-        <span className="navbar-brand">Cook<span>Smart</span></span>
-        <div className="navbar-right">
-          {totalCount > 0 && mode !== "generate" && (
-            <span className="navbar-count">{totalCount} recipes</span>
-          )}
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div className="home-layout">
+
+      {/* ── Top bar ── */}
+      <header className="home-topbar">
+        <button
+          className={`hamburger${menuOpen ? " open" : ""}`}
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+        >
+          <span /><span /><span />
+        </button>
+
+        <div className="topbar-right">
           {/* Language toggle */}
           <div style={{ display: "inline-flex", border: "1.5px solid var(--border)", borderRadius: 99, overflow: "hidden", flexShrink: 0 }}>
             {["en", "lg"].map(code => (
-              <button
-                key={code}
-                onClick={() => lang !== code && toggleLang()}
-                style={{
-                  padding: "3px 9px", border: "none", cursor: "pointer",
-                  fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
-                  letterSpacing: ".04em", transition: "all .15s",
-                  background: lang === code ? "var(--earth)" : "transparent",
-                  color:      lang === code ? "var(--white)" : "var(--stone)",
-                }}
-              >
-                {code.toUpperCase()}
-              </button>
+              <button key={code} onClick={() => lang !== code && toggleLang()} style={{
+                padding: "3px 9px", border: "none", cursor: "pointer",
+                fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
+                letterSpacing: ".04em", transition: "all .15s",
+                background: lang === code ? "var(--earth)" : "transparent",
+                color:      lang === code ? "var(--white)" : "var(--stone)",
+              }}>{code.toUpperCase()}</button>
             ))}
           </div>
+
+          {/* Bell */}
+          <button className="topbar-icon-btn" aria-label="Notifications">
+            <Bell size={18} strokeWidth={1.8} />
+          </button>
+
+          {/* User */}
           {user ? (
-            <div className="navbar-user">
-              <span className="navbar-user-name">Hi, {user.name.split(" ")[0]}</span>
-              <button className="navbar-profile-btn" onClick={onMealPlan}>{t("nav_mealplan")}</button>
-              <button className="navbar-profile-btn" onClick={onProfile}>{t("nav_profile")}</button>
-              <button className="navbar-logout" onClick={onLogout}>{t("nav_signout")}</button>
+            <div className="topbar-user">
+              <div className="topbar-avatar">{user.name[0].toUpperCase()}</div>
+              <span className="topbar-user-label">Hi, {user.name.split(" ")[0]}! 👋</span>
+              <ChevronDown size={14} strokeWidth={2} style={{ color: "var(--stone)" }} />
+              {/* Simple inline dropdown on hover handled by CSS */}
+              <div className="topbar-dropdown">
+                <button className="topbar-dd-item" onClick={onProfile}>{t("nav_profile")}</button>
+                <button className="topbar-dd-item" onClick={onMealPlan}>{t("nav_mealplan")}</button>
+                <button className="topbar-dd-item topbar-dd-item--danger" onClick={onLogout}>{t("nav_signout")}</button>
+              </div>
             </div>
           ) : (
-            <div className="navbar-guest">
-              <button className="navbar-signin-btn" onClick={onLogin}>{t("nav_signin")}</button>
-            </div>
+            <button className="navbar-signin-btn" onClick={onLogin}>{t("nav_signin")}</button>
           )}
-          {/* Hamburger — mobile only, shown via CSS */}
-          <button
-            className={`hamburger${menuOpen ? " open" : ""}`}
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
         </div>
-      </nav>
+      </header>
 
       {/* ── Mobile menu ── */}
       {menuOpen && (
@@ -423,237 +394,252 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
           {user ? (
             <>
               <p className="mobile-menu-greeting">Hi, {user.name.split(" ")[0]}</p>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onMealPlan(); setMenuOpen(false); }}>
-                {t("nav_mealplan")}
-              </button>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onProfile(); setMenuOpen(false); }}>
-                {t("nav_profile")}
-              </button>
-              <button className="mobile-menu-btn mobile-menu-btn--ghost" onClick={() => { onLogout(); setMenuOpen(false); }}>
-                {t("nav_signout")}
-              </button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onMealPlan(); setMenuOpen(false); }}>{t("nav_mealplan")}</button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onProfile(); setMenuOpen(false); }}>{t("nav_profile")}</button>
+              <button className="mobile-menu-btn mobile-menu-btn--ghost"     onClick={() => { onLogout(); setMenuOpen(false); }}>{t("nav_signout")}</button>
             </>
           ) : (
-            <button className="mobile-menu-btn" onClick={() => { onLogin(); setMenuOpen(false); }}>
-              {t("nav_signin")}
-            </button>
+            <button className="mobile-menu-btn" onClick={() => { onLogin(); setMenuOpen(false); }}>{t("nav_signin")}</button>
           )}
         </div>
       )}
 
-      {/* ── Secondary Nav ── */}
-      <div className="secondary-nav">
-        <div className="secondary-nav-inner">
-          <button className="snav-item" onClick={() => { setSearched(false); setMode("name"); setQuery(""); setCuisine(""); setCourse(""); }}>
-            <HomeIcon size={15} strokeWidth={1.8} /> Home
-          </button>
-          <button className="snav-item" onClick={() => { setMode("name"); setSearched(false); setQuery(""); }}>
-            <Search size={15} strokeWidth={1.8} /> Explore Recipes
-          </button>
-          <button className="snav-item" onClick={() => { setSearched(false); setCuisine(""); setCourse(""); setMode("name"); }}>
-            <LayoutGrid size={15} strokeWidth={1.8} /> Categories
-          </button>
-          {user && (
-            <>
-              <button className="snav-item" onClick={onMealPlan}>
-                <CalendarDays size={15} strokeWidth={1.8} /> Meal Planner
-              </button>
-              <button className="snav-item" onClick={onProfile}>
-                <ChefHat size={15} strokeWidth={1.8} /> My Recipes
-              </button>
-              <button className="snav-item" onClick={onProfile}>
-                <Heart size={15} strokeWidth={1.8} /> Favorites
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      {/* ── Three-column body ── */}
+      <div className="home-body">
 
-      {/* ── Hero ── */}
-      <div className="hero">
-        <h1>Good food. Made easy.<br />Made for you.</h1>
-        <p>Discover African recipes, get smart suggestions and cook with confidence.</p>
+        {/* Left sidebar */}
+        <LeftSidebar
+          user={user}
+          onLogin={onLogin}
+          onMealPlan={onMealPlan}
+          onProfile={onProfile}
+          activePage={activePage}
+          onNavigate={(id) => {
+            if (id === "home")       { setSearched(false); setCuisine(""); setCourse(""); setMode("name"); setQuery(""); loadBrowse(); }
+            else if (id === "explore")    { setMode("name"); setSearched(false); setQuery(""); }
+            else if (id === "categories") { setSearched(false); setCuisine(""); setCourse(""); }
+          }}
+        />
 
-        {/* Mode toggle */}
-        <div className="mode-toggle">
-          <button className={`mode-btn${mode === "name" ? " active" : ""}`} onClick={() => switchMode("name")}>
-            {t("by_name")}
-          </button>
-          <button className={`mode-btn${mode === "ingredients" ? " active" : ""}`} onClick={() => switchMode("ingredients")}>
-            {t("by_ingredients")}
-          </button>
-        </div>
+        {/* Main content */}
+        <main className="home-main">
 
-        {/* Name search */}
-        {mode === "name" && (
-          <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
-            <form className="search-wrap" onSubmit={handleNameSearch}>
-              <span className="search-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-              </span>
-              <input
-                className="search-input"
-                placeholder={t("search_placeholder")}
-                value={query}
-                onChange={e => { setQuery(e.target.value); setShowSuggest(true); }}
-                onFocus={() => setShowSuggest(true)}
-                autoComplete="off"
-              />
-              {showSuggest && suggestions.length > 0 && (
-                <div className="suggest-dropdown">
-                  {suggestions.map(s => (
-                    <div key={s.id} className="suggest-item"
-                      onMouseDown={() => { setQuery(s.name); setShowSuggest(false); onSelectRecipe(s.id); }}>
-                      <span className="suggest-item-name">{s.name}</span>
-                      <span className="suggest-item-meta">{s.cuisine_type} · {s.course}</span>
+          {/* ── Hero ── */}
+          <div className="hero">
+            <h1>Good food. Made easy.<br />Made for you.</h1>
+            <p>Discover African recipes, get smart suggestions and cook with confidence.</p>
+
+            {/* Mode toggle */}
+            <div className="mode-toggle">
+              <button className={`mode-btn${mode === "name" ? " active" : ""}`} onClick={() => switchMode("name")}>{t("by_name")}</button>
+              <button className={`mode-btn${mode === "ingredients" ? " active" : ""}`} onClick={() => switchMode("ingredients")}>{t("by_ingredients")}</button>
+            </div>
+
+            {/* Name search */}
+            {mode === "name" && (
+              <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
+                <form className="search-wrap" onSubmit={handleNameSearch}>
+                  <span className="search-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                  </span>
+                  <input
+                    className="search-input"
+                    placeholder={t("search_placeholder")}
+                    value={query}
+                    onChange={e => { setQuery(e.target.value); setShowSuggest(true); }}
+                    onFocus={() => setShowSuggest(true)}
+                    autoComplete="off"
+                  />
+                  {showSuggest && suggestions.length > 0 && (
+                    <div className="suggest-dropdown">
+                      {suggestions.map(s => (
+                        <div key={s.id} className="suggest-item"
+                          onMouseDown={() => { setQuery(s.name); setShowSuggest(false); onSelectRecipe(s.id); }}>
+                          <span className="suggest-item-name">{s.name}</span>
+                          <span className="suggest-item-meta">{s.cuisine_type} · {s.course}</span>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                </form>
+                <div className="popular-chips">
+                  <span className="popular-label">Popular searches:</span>
+                  {["Jollof Rice", "Matoke", "Chicken Stew", "Groundnut Soup", "Fried Plantain"].map(q => (
+                    <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>{q}</button>
                   ))}
                 </div>
-              )}
-            </form>
-            <div className="popular-chips">
-              <span className="popular-label">Popular searches:</span>
-              {["Jollof Rice", "Matoke", "Chicken Stew", "Groundnut Soup", "Fried Plantain"].map(q => (
-                <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>
-                  {q}
-                </button>
-              ))}
-            </div>
-            <div style={{ marginTop: "1rem" }}>
-              <button className="search-btn" onClick={handleNameSearch} disabled={!query.trim()}>
-                {t("search_btn")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Ingredient pill input */}
-        {mode === "ingredients" && (
-          <>
-            <PillInput
-              pills={pills}
-              ingInput={ingInput}
-              ingRef={ingRef}
-              ingSuggest={ingSuggest}
-              showIngSug={showIngSug}
-              hint={pillHint}
-              onIngChange={handleIngChange}
-              onKeyDown={handleIngKeyDown}
-              onFocus={handleIngFocus}
-              onSuggestPick={addPill}
-              onRemovePill={handleRemovePill}
-            />
-            <div style={{ marginTop: ".75rem" }}>
-              <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
-                {loading ? "…" : t("search_ing_btn")}
-              </button>
-            </div>
-
-          </>
-        )}
-
-        {/* ── AI Generate CTA ── */}
-        <div className="ai-gen-cta">
-          {!genOpen ? (
-            <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
-              ✨ Not sure what to cook? Use CookSmart AI
-            </button>
-          ) : genLimitHit ? (
-            <div className="gen-limit-box">
-              <p>You've used your 2 free generations. Sign in to keep building your plate.</p>
-              <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-                <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
-                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setGenRecipe(null); setError(""); }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="ai-gen-box">
-              <textarea
-                className="nlp-textarea"
-                placeholder='Describe what you have in plain English, e.g. "I have chicken, tomatoes and some garlic at home"'
-                value={genText}
-                onChange={e => setGenText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
-                rows={3}
-                autoFocus
-              />
-              {!user && (
-                <p className="gen-guest-note">
-                  {genCount === 0 ? "2 free generations available — sign in for unlimited." :
-                   genCount === 1 ? "1 free generation left — sign in for unlimited." : null}
-                </p>
-              )}
-              <div className="ai-gen-actions">
-                <button className="search-btn" onClick={handleGenerate}
-                  disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
-                  {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
-                </button>
-                <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Main content ── */}
-      <div className="main">
-        {error && <div className="error-banner">{error}</div>}
-
-        {/* Generate results */}
-        {generating && (
-          <div className="gen-loading">
-            <div className="spinner" style={{ margin: "0 auto 1rem" }} />
-            <p>CookSmart AI is creating your recipe…</p>
-            <p style={{ fontSize: ".85rem", marginTop: ".35rem" }}>This may take a few seconds.</p>
-          </div>
-        )}
-
-        {genClarifyMsg && (
-          <div className="gen-clarify-box">
-            <span className="gen-clarify-icon">🍽️</span>
-            <p>{genClarifyMsg}</p>
-          </div>
-        )}
-
-        {genRecipe && (
-          <div className="gen-panel">
-            {genRecipe.sections ? (
-              /* ── Combo meal ── */
-              <>
-                <div className="gen-header">
-                  <span className="ai-badge gen-badge">AI-Generated Meal</span>
-                  <h2 className="gen-title">Combination Meal</h2>
-                  <p className="gen-desc">
-                    {genRecipe.sections.length} dishes generated based on your request.
-                  </p>
+                <div style={{ marginTop: "1rem" }}>
+                  <button className="search-btn" onClick={handleNameSearch} disabled={!query.trim()}>{t("search_btn")}</button>
                 </div>
+              </div>
+            )}
 
-                {genRecipe.sections.map((section, idx) => (
-                  <div key={idx} className="combo-section">
-                    <div className={`combo-label combo-label--${(section.label || "").toLowerCase()}`}>
-                      {section.label}
+            {/* Ingredient search */}
+            {mode === "ingredients" && (
+              <>
+                <PillInput
+                  pills={pills} ingInput={ingInput} ingRef={ingRef}
+                  ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
+                  onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
+                  onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
+                />
+                <div style={{ marginTop: ".75rem" }}>
+                  <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
+                    {loading ? "…" : t("search_ing_btn")}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* AI Generate CTA */}
+            <div className="ai-gen-cta">
+              {!genOpen ? (
+                <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
+                  ✨ Not sure what to cook? Use CookSmart AI
+                </button>
+              ) : genLimitHit ? (
+                <div className="gen-limit-box">
+                  <p>You've used your 2 free generations. Sign in to keep building your plate.</p>
+                  <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                    <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
+                    <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setGenRecipe(null); setError(""); }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="ai-gen-box">
+                  <textarea
+                    className="nlp-textarea"
+                    placeholder='Describe what you have in plain English, e.g. "I have chicken, tomatoes and some garlic at home"'
+                    value={genText}
+                    onChange={e => setGenText(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
+                    rows={3} autoFocus
+                  />
+                  {!user && (
+                    <p className="gen-guest-note">
+                      {genCount === 0 ? "2 free generations available — sign in for unlimited." :
+                       genCount === 1 ? "1 free generation left — sign in for unlimited." : null}
+                    </p>
+                  )}
+                  <div className="ai-gen-actions">
+                    <button className="search-btn" onClick={handleGenerate}
+                      disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
+                      {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
+                    </button>
+                    <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Content area ── */}
+          <div className="home-content">
+            {error && <div className="error-banner">{error}</div>}
+
+            {/* Generating */}
+            {generating && (
+              <div className="gen-loading">
+                <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+                <p>CookSmart AI is creating your recipe…</p>
+                <p style={{ fontSize: ".85rem", marginTop: ".35rem" }}>This may take a few seconds.</p>
+              </div>
+            )}
+
+            {genClarifyMsg && (
+              <div className="gen-clarify-box">
+                <span className="gen-clarify-icon">🍽️</span>
+                <p>{genClarifyMsg}</p>
+              </div>
+            )}
+
+            {/* AI-generated recipe panel */}
+            {genRecipe && (
+              <div className="gen-panel">
+                {genRecipe.sections ? (
+                  <>
+                    <div className="gen-header">
+                      <span className="ai-badge gen-badge">AI-Generated Meal</span>
+                      <h2 className="gen-title">Combination Meal</h2>
+                      <p className="gen-desc">{genRecipe.sections.length} dishes generated based on your request.</p>
                     </div>
-                    <div className="combo-recipe-header">
-                      <h3 className="combo-dish-name">{section.dish_name}</h3>
-                      {section.local_name && <p className="gen-local">{section.local_name}</p>}
-                      <p className="gen-desc combo-desc">{section.description}</p>
+                    {genRecipe.sections.map((section, idx) => (
+                      <div key={idx} className="combo-section">
+                        <div className={`combo-label combo-label--${(section.label || "").toLowerCase()}`}>{section.label}</div>
+                        <div className="combo-recipe-header">
+                          <h3 className="combo-dish-name">{section.dish_name}</h3>
+                          {section.local_name && <p className="gen-local">{section.local_name}</p>}
+                          <p className="gen-desc combo-desc">{section.description}</p>
+                          <div className="gen-meta">
+                            {section.cuisine      && <span className="meta-chip cuisine">{section.cuisine}</span>}
+                            {section.cooking_time && <span className="meta-chip">⏱ {section.cooking_time}</span>}
+                            {section.servings     && <span className="meta-chip">👥 {section.servings}</span>}
+                          </div>
+                        </div>
+                        <div className="gen-body">
+                          <div className="gen-section">
+                            <h3>{t("ingredients")}</h3>
+                            <ul className="gen-ing-list">
+                              {(section.ingredients || []).map((ing, i) => (
+                                <li key={i} className="gen-ing-item">
+                                  <span className="gen-ing-name">{ing.item}</span>
+                                  <span className="gen-ing-qty">{ing.quantity}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="gen-section">
+                            <h3>{t("instructions")}</h3>
+                            <ol className="gen-steps">
+                              {(section.steps || []).map((step, i) => (
+                                <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        </div>
+                        {section.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {section.tips}</div>}
+                        {section.health_tip && (
+                          <div className="gen-health-tip">
+                            <span className="gen-health-icon">🌿</span>
+                            <div><strong>Health Tip</strong><p>{section.health_tip}</p></div>
+                          </div>
+                        )}
+                        <div className="gen-save-bar">
+                          <button
+                            className={`gen-save-btn${genSectionSaved[idx] ? " saved" : ""}`}
+                            onClick={user ? () => handleSaveSectionRecipe(section, idx) : undefined}
+                            disabled={!user || genSectionSaving[idx] || genSectionSaved[idx]}
+                            title={!user ? "Sign in to save this recipe" : undefined}
+                          >
+                            {genSectionSaved[idx] ? "✓ Saved!" : genSectionSaving[idx] ? "Saving…" : "Save to my profile"}
+                          </button>
+                          {!user && <span className="gen-save-hint">Sign in to save</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className="gen-header">
+                      <span className="ai-badge gen-badge">AI-Generated Recipe</span>
+                      <h2 className="gen-title">{genRecipe.dish_name}</h2>
+                      {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
+                      <p className="gen-desc">{genRecipe.description}</p>
                       <div className="gen-meta">
-                        {section.cuisine      && <span className="meta-chip cuisine">{section.cuisine}</span>}
-                        {section.cooking_time && <span className="meta-chip">⏱ {section.cooking_time}</span>}
-                        {section.servings     && <span className="meta-chip">👥 {section.servings}</span>}
+                        {genRecipe.cuisine      && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
+                        {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
+                        {genRecipe.servings     && <span className="meta-chip">👥 {genRecipe.servings}</span>}
                       </div>
                     </div>
                     <div className="gen-body">
                       <div className="gen-section">
                         <h3>{t("ingredients")}</h3>
                         <ul className="gen-ing-list">
-                          {(section.ingredients || []).map((ing, i) => (
+                          {(genRecipe.ingredients || []).map((ing, i) => (
                             <li key={i} className="gen-ing-item">
                               <span className="gen-ing-name">{ing.item}</span>
                               <span className="gen-ing-qty">{ing.quantity}</span>
@@ -664,132 +650,57 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                       <div className="gen-section">
                         <h3>{t("instructions")}</h3>
                         <ol className="gen-steps">
-                          {(section.steps || []).map((step, i) => (
+                          {(genRecipe.steps || []).map((step, i) => (
                             <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
                           ))}
                         </ol>
                       </div>
                     </div>
-                    {section.tips && (
-                      <div className="gen-tips"><strong>Chef's tip:</strong> {section.tips}</div>
-                    )}
-                    {section.health_tip && (
+                    {genRecipe.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>}
+                    {genRecipe.health_tip && (
                       <div className="gen-health-tip">
                         <span className="gen-health-icon">🌿</span>
-                        <div>
-                          <strong>Health Tip</strong>
-                          <p>{section.health_tip}</p>
-                        </div>
+                        <div><strong>Health Tip</strong><p>{genRecipe.health_tip}</p></div>
                       </div>
                     )}
                     <div className="gen-save-bar">
                       <button
-                        className={`gen-save-btn${genSectionSaved[idx] ? " saved" : ""}`}
-                        onClick={user ? () => handleSaveSectionRecipe(section, idx) : undefined}
-                        disabled={!user || genSectionSaving[idx] || genSectionSaved[idx]}
+                        className={`gen-save-btn${genSaved ? " saved" : ""}`}
+                        onClick={user ? handleSaveRecipe : undefined}
+                        disabled={!user || genSaving || genSaved}
                         title={!user ? "Sign in to save this recipe" : undefined}
                       >
-                        {genSectionSaved[idx] ? "✓ Saved!" : genSectionSaving[idx] ? "Saving…" : "Save to my profile"}
+                        {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
                       </button>
-                      <button className="gen-dl-btn" onClick={() => downloadRecipePDF(section, "ai")}>
-                        ⬇ Download PDF
-                      </button>
-                      {!user && <span className="gen-save-hint">Sign in to save</span>}
+                      {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
                     </div>
-                  </div>
-                ))}
-              </>
-            ) : (
-              /* ── Single recipe ── */
-              <>
-                <div className="gen-header">
-                  <span className="ai-badge gen-badge">AI-Generated Recipe</span>
-                  <h2 className="gen-title">{genRecipe.dish_name}</h2>
-                  {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
-                  <p className="gen-desc">{genRecipe.description}</p>
-                  <div className="gen-meta">
-                    {genRecipe.cuisine      && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
-                    {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
-                    {genRecipe.servings     && <span className="meta-chip">👥 {genRecipe.servings}</span>}
-                  </div>
-                </div>
-                <div className="gen-body">
-                  <div className="gen-section">
-                    <h3>{t("ingredients")}</h3>
-                    <ul className="gen-ing-list">
-                      {(genRecipe.ingredients || []).map((ing, i) => (
-                        <li key={i} className="gen-ing-item">
-                          <span className="gen-ing-name">{ing.item}</span>
-                          <span className="gen-ing-qty">{ing.quantity}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="gen-section">
-                    <h3>{t("instructions")}</h3>
-                    <ol className="gen-steps">
-                      {(genRecipe.steps || []).map((step, i) => (
-                        <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-                {genRecipe.tips && (
-                  <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>
+                  </>
                 )}
-                {genRecipe.health_tip && (
-                  <div className="gen-health-tip">
-                    <span className="gen-health-icon">🌿</span>
-                    <div>
-                      <strong>Health Tip</strong>
-                      <p>{genRecipe.health_tip}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="gen-save-bar">
-                  <button
-                    className={`gen-save-btn${genSaved ? " saved" : ""}`}
-                    onClick={user ? handleSaveRecipe : undefined}
-                    disabled={!user || genSaving || genSaved}
-                    title={!user ? "Sign in to save this recipe" : undefined}
-                  >
-                    {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
-                  </button>
-                  <button className="gen-dl-btn" onClick={() => downloadRecipePDF(genRecipe, "ai")}>
-                    ⬇ Download PDF
-                  </button>
-                  {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
-                </div>
-              </>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* Browse / search results */}
-        <>
-          {!searched && (
+            {/* ── Category pills ── */}
+            {!searched && (
               <div className="category-section">
                 <h2 className="category-section-title">Browse by category</h2>
                 <div className="category-pills">
-                  {CATEGORY_FILTERS.map(cat => {
-                    const isActive = cat.cuisine === cuisine && cat.course === course;
-                    return (
-                      <button
-                        key={cat.label}
-                        className={`category-pill${isActive ? " active" : ""}`}
-                        onClick={() => { setCuisine(cat.cuisine); setCourse(cat.course); setPage(1); }}
-                      >
-                        <div className="category-pill-icon-wrap">
-                          <cat.Icon size={22} strokeWidth={1.8} />
-                        </div>
-                        <span className="category-pill-label">{cat.label}</span>
-                      </button>
-                    );
-                  })}
+                  {CATEGORY_FILTERS.map(cat => (
+                    <button
+                      key={cat.label}
+                      className={`category-pill${isCatActive(cat) ? " active" : ""}`}
+                      onClick={() => handleCatClick(cat)}
+                    >
+                      <div className="category-pill-icon-wrap">
+                        <cat.Icon size={22} strokeWidth={1.8} />
+                      </div>
+                      <span className="category-pill-label">{cat.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
+            {/* AI ingredient results */}
             {mode === "ingredients" && searched && aiResults.length > 0 && (
               <div style={{ marginBottom: "2.5rem" }}>
                 <h2 className="section-heading">
@@ -798,9 +709,9 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                 </h2>
                 <div className="recipe-grid">
                   {aiResults.map(r => (
-                    <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason}
-                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
-                      onAddToMealPlan={onAddToMealPlan} />
+                    <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                      aiReason={r.ai_reason} isSaved={savedIds?.has(r.id)}
+                      onToggleSave={onToggleSave || onRequestLogin} onAddToMealPlan={onAddToMealPlan} />
                   ))}
                 </div>
               </div>
@@ -813,29 +724,73 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
               </div>
             )}
 
-            {results.length > 0 && (
-              <h2 className="section-heading">
-                {searched
-                  ? mode === "ingredients" ? "Exact matches" : "Search results"
-                  : cuisine || course ? "Filtered recipes" : "All recipes"}
-                <span className="count">{totalCount} recipes</span>
-              </h2>
-            )}
-
+            {/* Skeleton */}
             {loading && !aiLoading && <SkeletonGrid />}
 
+            {/* ── Recipe sections ── */}
             {!loading && results.length > 0 && (
-              <div className="recipe-grid">
-                {results.map(r => (
-                  <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
-                    matchCount={mode === "ingredients" ? r.match_count : null}
-                    requestedCount={mode === "ingredients" ? r.requested_count : null}
-                    isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
-                    onAddToMealPlan={onAddToMealPlan} />
-                ))}
-              </div>
+              !searched && !cuisine && !course && results.length >= 8 ? (
+                <>
+                  {/* Recommended for you */}
+                  <div className="recipe-section">
+                    <div className="section-head-row">
+                      <h2 className="section-heading">
+                        Recommended for you
+                        <span className="section-tag">Based on your preferences</span>
+                      </h2>
+                      <button className="section-view-all" onClick={() => setCourse("main")}>View all</button>
+                    </div>
+                    <div className="recipe-scroll-row">
+                      {results.slice(0, 4).map(r => (
+                        <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                          isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                          onAddToMealPlan={onAddToMealPlan} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Trending this week */}
+                  {results.length > 4 && (
+                    <div className="recipe-section">
+                      <div className="section-head-row">
+                        <h2 className="section-heading">
+                          Trending this week
+                          <span className="section-tag">Popular with our community</span>
+                        </h2>
+                        <button className="section-view-all">View all</button>
+                      </div>
+                      <div className="recipe-scroll-row">
+                        {results.slice(4, 8).map(r => (
+                          <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                            isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                            onAddToMealPlan={onAddToMealPlan} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="section-heading">
+                    {searched
+                      ? mode === "ingredients" ? "Exact matches" : "Search results"
+                      : cuisine || course ? "Filtered recipes" : "All recipes"}
+                    <span className="count">{totalCount} recipes</span>
+                  </h2>
+                  <div className="recipe-grid">
+                    {results.map(r => (
+                      <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                        matchCount={mode === "ingredients" ? r.match_count : null}
+                        requestedCount={mode === "ingredients" ? r.requested_count : null}
+                        isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                        onAddToMealPlan={onAddToMealPlan} />
+                    ))}
+                  </div>
+                </>
+              )
             )}
 
+            {/* Partial matches */}
             {mode === "ingredients" && searched && partials.length > 0 && (
               <div style={{ marginTop: "2.5rem" }}>
                 <h2 className="section-heading">You might also like <span className="count">partial matches</span></h2>
@@ -850,25 +805,23 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
               </div>
             )}
 
+            {/* Empty state */}
             {!loading && searched && results.length === 0 && aiResults.length === 0 && (
               <div className="state-center">
                 <div className="emoji">🍽️</div>
                 <h3>No recipes found</h3>
-                <p>
-                  {mode === "ingredients"
-                    ? "Try adding different ingredients, or use fewer to broaden your search."
-                    : "Try a different dish name, or browse all recipes by clearing your search."}
-                </p>
-                <button
-                  className="search-btn"
+                <p>{mode === "ingredients"
+                  ? "Try adding different ingredients, or use fewer to broaden your search."
+                  : "Try a different dish name, or browse all recipes by clearing your search."}</p>
+                <button className="search-btn"
                   style={{ marginTop: "1.5rem", display: "inline-block", width: "auto", padding: ".65rem 1.75rem" }}
-                  onClick={() => { setSearched(false); setResults([]); setQuery(""); setPills([]); loadBrowse(); }}
-                >
+                  onClick={() => { setSearched(false); setResults([]); setQuery(""); setPills([]); loadBrowse(); }}>
                   Browse all recipes
                 </button>
               </div>
             )}
 
+            {/* Pagination */}
             {!searched && totalPages > 1 && (
               <div className="pagination">
                 <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
@@ -876,7 +829,17 @@ export default function Home({ onSelectRecipe, user, onLogout, onProfile, onMeal
                 <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
               </div>
             )}
-        </>
+          </div>
+        </main>
+
+        {/* Right sidebar */}
+        <RightSidebar
+          user={user}
+          onMealPlan={onMealPlan}
+          onSelectRecipe={onSelectRecipe}
+          onLogin={onLogin}
+        />
+
       </div>
     </div>
   );
