@@ -759,7 +759,7 @@ export default function Home({
                   <div className="ai-gen-cta">
                     {!genOpen ? (
                       <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
-                        Cook with what you have.
+                        ✨ Not sure what to cook? Use CookSmart AI
                       </button>
                     ) : genLimitHit ? (
                       <div className="gen-limit-box">
