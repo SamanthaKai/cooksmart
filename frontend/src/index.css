@@ -2485,7 +2485,7 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .app-footer {
-  background: var(--earth);
+  background: #faa770;
   color: var(--white);
   padding: 20px;
   width: 100%;

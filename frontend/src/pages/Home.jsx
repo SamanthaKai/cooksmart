@@ -356,6 +356,9 @@ export default function Home({
 
   // ── Sidebar navigation ────────────────────────────────────────────────────
   function handleSidebarNavigate(id) {
+    // Always dismiss an open recipe when navigating
+    if (currentRecipeId) onClearRecipe?.();
+
     if (id === "home") {
       setView("home");
       setSearched(false); setCuisine(""); setCourse("");
