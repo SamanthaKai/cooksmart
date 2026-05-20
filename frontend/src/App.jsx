@@ -159,7 +159,9 @@ export default function App() {
           onMealPlan={() => setPage("mealplan")}
           onLogin={() => setPage("login")}
           savedIds={savedIds}
+          likedIds={likedIds}
           onToggleSave={handleToggleSave}
+          onToggleLike={handleToggleLike}
           onRequestLogin={requestLogin}
           onAddToMealPlan={handleAddToMealPlan}
         />

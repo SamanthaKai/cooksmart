@@ -1,25 +1,51 @@
+import { useState } from "react";
 import {
   Home as HomeIcon, Search, LayoutGrid, CalendarDays,
-  Heart, Bookmark, ShoppingCart, BookOpen, Sparkles,
+  Heart, Bookmark, ShoppingCart, User, ChevronDown, ChevronRight,
+  Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater, Crown,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { id: "home",      label: "Home",           Icon: HomeIcon },
-  { id: "explore",   label: "Explore Recipes", Icon: Search },
-  { id: "categories",label: "Categories",      Icon: LayoutGrid },
-  { id: "mealplan",  label: "Meal Planner",    Icon: CalendarDays, requireAuth: true },
-  { id: "myrecipes", label: "My Recipes",      Icon: Heart,        requireAuth: true },
-  { id: "favorites", label: "Favorites",       Icon: Bookmark,     requireAuth: true },
-  { id: "shopping",  label: "Shopping List",   Icon: ShoppingCart },
-  { id: "cookbooks", label: "My Cookbooks",    Icon: BookOpen },
+const CATEGORIES = [
+  { label: "All Recipes",  Icon: LayoutGrid,      type: "all" },
+  { label: "African",      Icon: Globe,           type: "cuisine", value: "african" },
+  { label: "Soups",        Icon: Soup,            type: "course",  value: "soup" },
+  { label: "Main Dishes",  Icon: UtensilsCrossed, type: "course",  value: "main" },
+  { label: "Snacks",       Icon: Cookie,          type: "course",  value: "snack" },
+  { label: "Breakfast",    Icon: Sun,             type: "course",  value: "breakfast" },
+  { label: "Drinks",       Icon: GlassWater,      type: "course",  value: "beverage" },
 ];
 
-export default function LeftSidebar({ user, onLogin, onMealPlan, onProfile, activePage, onNavigate }) {
+const NAV_ITEMS = [
+  { id: "home",       label: "Home",           Icon: HomeIcon },
+  { id: "explore",    label: "Explore Recipes", Icon: Search },
+  { id: "categories", label: "Categories",     Icon: LayoutGrid, hasDropdown: true },
+  { id: "mealplan",   label: "Meal Planner",   Icon: CalendarDays, requireAuth: true },
+  { id: "myrecipes",  label: "My Recipes",     Icon: Bookmark,   requireAuth: true },
+  { id: "favorites",  label: "Favorites",      Icon: Heart,      requireAuth: true },
+  { id: "shopping",   label: "Shopping List",  Icon: ShoppingCart },
+  { id: "profile",    label: "My Profile",     Icon: User,       requireAuth: true },
+];
+
+export default function LeftSidebar({ user, onLogin, onMealPlan, onProfile, activePage, onNavigate, onCategorySelect }) {
+  const [catOpen, setCatOpen]     = useState(false);
+  const [premToast, setPremToast] = useState(false);
+
   function handleNav(item) {
     if (item.requireAuth && !user) { onLogin(); return; }
-    if (item.id === "mealplan")              { onMealPlan(); return; }
-    if (item.id === "myrecipes" || item.id === "favorites") { onProfile(); return; }
+    if (item.id === "mealplan")   { onMealPlan(); return; }
+    if (item.id === "profile")    { onProfile();  return; }
+    if (item.id === "categories") { setCatOpen(o => !o); return; }
     onNavigate(item.id);
+  }
+
+  function handleCatSelect(cat) {
+    setCatOpen(false);
+    onCategorySelect(cat);
+  }
+
+  function showPremium() {
+    setPremToast(true);
+    setTimeout(() => setPremToast(false), 2400);
   }
 
   return (
@@ -33,35 +59,47 @@ export default function LeftSidebar({ user, onLogin, onMealPlan, onProfile, acti
       {/* Navigation */}
       <nav className="sidebar-nav">
         {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            className={`sidebar-nav-item${activePage === item.id ? " active" : ""}`}
-            onClick={() => handleNav(item)}
-          >
-            <item.Icon size={17} strokeWidth={1.8} />
-            <span>{item.label}</span>
-          </button>
+          <div key={item.id}>
+            <button
+              className={`sidebar-nav-item${activePage === item.id ? " active" : ""}`}
+              onClick={() => handleNav(item)}
+            >
+              <item.Icon size={17} strokeWidth={1.8} />
+              <span>{item.label}</span>
+              {item.hasDropdown && (
+                <span className="sidebar-cat-chevron">
+                  {catOpen
+                    ? <ChevronDown size={13} strokeWidth={2} />
+                    : <ChevronRight size={13} strokeWidth={2} />}
+                </span>
+              )}
+            </button>
+
+            {item.id === "categories" && catOpen && (
+              <div className="sidebar-cat-dropdown">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.label}
+                    className="sidebar-cat-item"
+                    onClick={() => handleCatSelect(cat)}
+                  >
+                    <cat.Icon size={14} strokeWidth={1.8} />
+                    <span>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </nav>
 
-      {/* CookSmart AI */}
-      <div className="sidebar-ai-card">
-        <div className="sidebar-ai-header">
-          <Sparkles size={14} strokeWidth={1.8} />
-          <span>CookSmart AI</span>
-        </div>
-        <p className="sidebar-ai-desc">Ask anything about ingredients, cooking or recipes.</p>
-        <button className="sidebar-ai-btn">Ask AI Assistant</button>
-      </div>
-
-      {/* Meal Plan card */}
-      <div className="sidebar-mp-card">
-        <div className="sidebar-mp-art">🥗</div>
-        <h4 className="sidebar-mp-title">Create your meal plan</h4>
-        <p className="sidebar-mp-desc">Plan your meals for the week and shop smart.</p>
-        <button className="sidebar-mp-btn" onClick={user ? onMealPlan : onLogin}>
-          Start Planning
+      {/* Premium — pinned at bottom */}
+      <div className="sidebar-premium">
+        <button className="sidebar-premium-btn" onClick={showPremium}>
+          <Crown size={14} strokeWidth={1.8} />
+          <span>Try Premium</span>
         </button>
+        {premToast && <div className="sidebar-premium-toast">Coming soon! 🎉</div>}
       </div>
     </aside>
   );

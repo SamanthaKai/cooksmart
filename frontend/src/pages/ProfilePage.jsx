@@ -68,8 +68,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
   const [error, setError]       = useState("");
   const [success, setSuccess]   = useState(false);
 
-  // ── My Recipes tabs ────────────────────────────────────────────────────────
-  const [myTab, setMyTab]           = useState("saved");   // "saved" | "liked" | "history"
+  // ── Viewing history ────────────────────────────────────────────────────────
   const [myRecipes, setMyRecipes]   = useState([]);
   const [myLoading, setMyLoading]   = useState(false);
   const [clearingHistory, setClearingHistory] = useState(false);
@@ -93,16 +92,14 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
       .finally(() => setGenRecipesLoading(false));
   }, []);
 
-  // Load My Recipes when tab changes
+  // Load viewing history on mount
   useEffect(() => {
     setMyLoading(true);
-    const fn = myTab === "saved" ? api.getSaved :
-               myTab === "liked" ? api.getLiked : api.getHistory;
-    fn()
+    api.getHistory()
       .then(data => setMyRecipes(data.recipes || []))
       .catch(() => setMyRecipes([]))
       .finally(() => setMyLoading(false));
-  }, [myTab]);
+  }, []);
 
   function handleClearHistory() {
     setHistoryModal(true);
@@ -404,11 +401,11 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
           )}
         </div>
 
-        {/* ── My Recipes ── */}
+        {/* ── Viewing History ── */}
         <div className="my-recipes-section">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-            <h2 className="profile-section-title" style={{ margin: 0 }}>My Recipes</h2>
-            {myTab === "history" && myRecipes.length > 0 && (
+            <h2 className="profile-section-title" style={{ margin: 0 }}>🕘 Viewing History</h2>
+            {myRecipes.length > 0 && (
               <button
                 className="ai-dismiss"
                 style={{ fontSize: ".82rem", color: "#c0392b" }}
@@ -419,17 +416,6 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
               </button>
             )}
           </div>
-          <div className="my-recipes-tabs">
-            {[["saved", "🔖 Saved"], ["liked", "❤️ Liked"], ["history", "🕘 History"]].map(([tab, label]) => (
-              <button
-                key={tab}
-                className={`my-recipes-tab${myTab === tab ? " active" : ""}`}
-                onClick={() => setMyTab(tab)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
 
           {myLoading ? (
             <div className="state-center" style={{ padding: "2rem" }}>
@@ -437,9 +423,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
             </div>
           ) : myRecipes.length === 0 ? (
             <div className="my-recipes-empty">
-              {myTab === "saved"   && "No saved recipes yet. Tap the bookmark icon on any recipe to save it."}
-              {myTab === "liked"   && "No liked recipes yet. Tap the heart icon on a recipe to like it."}
-              {myTab === "history" && "No history yet. Browse some recipes and they'll appear here."}
+              No history yet. Browse some recipes and they'll appear here.
             </div>
           ) : (
             <div className="my-recipes-list">
