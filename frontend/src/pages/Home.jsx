@@ -375,10 +375,10 @@ export default function Home({
       setView("explore");
       setSearched(false); setQuery("");
     } else if (id === "mealplan") {
-      if (!user) { onLogin(); return; }
+      if (!user) { onRequestLogin(); return; }
       setView("mealplan");
     } else if (id === "profile") {
-      if (!user) { onLogin(); return; }
+      if (!user) { onRequestLogin(); return; }
       setView("profile");
     } else {
       setView(id); // myrecipes | favorites | shopping
@@ -524,7 +524,7 @@ export default function Home({
 
         <LeftSidebar
           user={user}
-          onLogin={onLogin}
+          onRequestLogin={onRequestLogin}
           activePage={activePage}
           onNavigate={handleSidebarNavigate}
           onCategorySelect={handleCatClick}
@@ -1132,10 +1132,10 @@ export default function Home({
         <button className={`bottom-nav-item${view === "mealplan" ? " active" : ""}`} onClick={() => handleSidebarNavigate("mealplan")}>
           <span>📅</span>Meals
         </button>
-        <button className={`bottom-nav-item${view === "favorites" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("favorites") : onLogin}>
+        <button className={`bottom-nav-item${view === "favorites" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("favorites") : onRequestLogin}>
           <span>❤️</span>Liked
         </button>
-        <button className={`bottom-nav-item${view === "profile" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("profile") : onLogin}>
+        <button className={`bottom-nav-item${view === "profile" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("profile") : onRequestLogin}>
           <span>👤</span>Profile
         </button>
       </nav>

@@ -26,12 +26,12 @@ const NAV_ITEMS = [
   { id: "profile",    label: "My Profile",     Icon: User,       requireAuth: true },
 ];
 
-export default function LeftSidebar({ user, onLogin, activePage, onNavigate, onCategorySelect }) {
+export default function LeftSidebar({ user, onRequestLogin, activePage, onNavigate, onCategorySelect }) {
   const [catOpen, setCatOpen]     = useState(false);
   const [premToast, setPremToast] = useState(false);
 
   function handleNav(item) {
-    if (item.requireAuth && !user) { onLogin(); return; }
+    if (item.requireAuth && !user) { onRequestLogin(); return; }
     if (item.id === "categories") { setCatOpen(o => !o); return; }
     onNavigate(item.id);
   }
