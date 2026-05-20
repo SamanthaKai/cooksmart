@@ -687,8 +687,8 @@ export default function Home({
               <>
                 {/* ── Hero ── */}
                 <div className="hero">
-                  <h1 className="hero-title">Good food. Made easy.<br />Made for you.</h1>
-                  <p className="hero-sub">Discover African recipes, get smart suggestions and cook with confidence.</p>
+                  <h1 className="hero-title">Built for African kitchens.</h1>
+                  <p className="hero-sub">Search, discover, and cook African meals.</p>
 
                   {/* Search bar */}
                   <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }} className="hero-search-wrap">
@@ -759,7 +759,7 @@ export default function Home({
                   <div className="ai-gen-cta">
                     {!genOpen ? (
                       <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
-                        ✨ Not sure what to cook? Use CookSmart AI
+                        Cook with what you have.
                       </button>
                     ) : genLimitHit ? (
                       <div className="gen-limit-box">

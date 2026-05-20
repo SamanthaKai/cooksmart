@@ -80,20 +80,21 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 }
 .hero > * { position: relative; z-index: 1; }
 .hero h1 {
-  font-size: clamp(2.2rem, 3.5vw, 2.8rem);
+  font-size: clamp(2.4rem, 4vw, 3.2rem);
   font-weight: 700;
-  margin-bottom: .7rem;
-  line-height: 1.15;
-  max-width: 460px;
-  white-space: nowrap;
+  letter-spacing: -0.025em;
+  margin-bottom: .85rem;
+  line-height: 1.1;
+  max-width: 520px;
 }
 .hero p {
-  font-size: .97rem;
-  opacity: .88;
-  max-width: 400px;
+  font-size: 1rem;
+  opacity: .78;
+  max-width: 360px;
   margin: 0 0 1.75rem;
-  font-weight: 300;
-  line-height: 1.55;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
 /* ── Mode toggle ── */
@@ -715,20 +716,22 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 .detail-hero-bottom .meta-chip.green   { background: var(--green); border-color: var(--green); }
 
 /* AI Generate CTA — bottom of home hero */
-.ai-gen-cta { margin-top: 2rem; }
+.ai-gen-cta { margin-top: 1.75rem; }
 .ai-gen-toggle {
-  background: rgba(255,255,255,.15);
-  border: 1.5px solid rgba(255,255,255,.45);
+  background: var(--earth);
+  border: none;
   color: var(--white);
-  border-radius: 99px;
-  padding: .6rem 1.4rem;
+  border-radius: 10px;
+  padding: .65rem 1.5rem;
   font-family: 'DM Sans', sans-serif;
   font-size: .9rem;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background .2s;
+  transition: background .2s, transform .15s;
+  box-shadow: 0 4px 18px rgba(194,112,58,.35);
 }
-.ai-gen-toggle:hover { background: rgba(255,255,255,.25); }
+.ai-gen-toggle:hover { background: var(--earth-dark); transform: translateY(-1px); }
 .ai-gen-box {
   background: rgba(0,0,0,.35);
   border: 1px solid rgba(255,255,255,.2);
@@ -1422,8 +1425,8 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   .navbar { padding: 0 .85rem; }
   .navbar-brand { font-size: 1.25rem; }
 
-  .hero { padding: 2.5rem 1rem 2rem; }
-  .hero h1 { font-size: 1.75rem; }
+  .hero { padding: 2.5rem 1.25rem 2rem; }
+  .hero h1 { font-size: 2rem; letter-spacing: -0.02em; }
   .hero p { font-size: .95rem; }
 
   .mode-btn { padding: 7px 14px; font-size: .82rem; white-space: nowrap; }
