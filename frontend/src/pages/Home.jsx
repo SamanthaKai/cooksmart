@@ -82,7 +82,8 @@ export default function Home({
   currentRecipeId, onClearRecipe,
 }) {
   const { t } = useLang();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen]       = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // ── View state ────────────────────────────────────────────────────────────
   const [view, setView] = useState("home");
@@ -144,6 +145,7 @@ export default function Home({
   const ingRef       = useRef(null);
   const nameInputRef = useRef(null);
   const ingInputRef  = useRef(null);
+  const userMenuRef  = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('cs_shopping', JSON.stringify(shoppingItems));
@@ -215,6 +217,7 @@ export default function Home({
     function handle(e) {
       if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
       if (ingRef.current     && !ingRef.current.contains(e.target))     setShowIngSug(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
       if (menuOpen && !e.target.closest('.home-topbar') && !e.target.closest('.mobile-menu')) setMenuOpen(false);
     }
     document.addEventListener("mousedown", handle);
@@ -475,11 +478,23 @@ export default function Home({
           </button>
 
           {user ? (
-            <div className="topbar-user">
+            <div
+              ref={userMenuRef}
+              className="topbar-user"
+              onClick={() => setUserMenuOpen(o => !o)}
+              role="button"
+              aria-haspopup="true"
+              aria-expanded={userMenuOpen}
+            >
               <div className="topbar-avatar">{user.name[0].toUpperCase()}</div>
               <ChevronDown size={14} strokeWidth={2} style={{ color: "var(--stone)" }} />
-              <div className="topbar-dropdown">
-                <button className="topbar-dd-item topbar-dd-item--danger" onClick={onLogout}>{t("nav_signout")}</button>
+              <div className="topbar-dropdown" style={{ display: userMenuOpen ? "flex" : "none" }}>
+                <button
+                  className="topbar-dd-item topbar-dd-item--danger"
+                  onClick={e => { e.stopPropagation(); onLogout(); setUserMenuOpen(false); }}
+                >
+                  {t("nav_signout")}
+                </button>
               </div>
             </div>
           ) : (

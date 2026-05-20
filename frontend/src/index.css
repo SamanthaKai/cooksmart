@@ -2783,7 +2783,6 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   transition: background .15s;
 }
 .topbar-user:hover { background: var(--cream-dark); }
-.topbar-user:hover .topbar-dropdown { display: flex; }
 
 .topbar-avatar {
   width: 32px;
