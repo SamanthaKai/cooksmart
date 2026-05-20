@@ -55,7 +55,7 @@ function ToggleGrid({ options, selected, onChange }) {
   );
 }
 
-export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe }) {
+export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe, isEmbedded = false }) {
   const [name, setName]                       = useState(user.name || "");
   const [dietary, setDietary]                 = useState([]);
   const [allergies, setAllergies]             = useState([]);
@@ -180,14 +180,15 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
     .join("");
 
   return (
-    <div className="profile-page">
-      {/* Navbar */}
-      <nav className="navbar">
-        <span className="navbar-brand">Cook<span>Smart</span></span>
-        <div className="navbar-right">
-          <button className="navbar-back" onClick={onBack}>← Back to recipes</button>
-        </div>
-      </nav>
+    <div className={isEmbedded ? "profile-page--embedded" : "profile-page"}>
+      {!isEmbedded && (
+        <nav className="navbar">
+          <span className="navbar-brand">Cook<span>Smart</span></span>
+          <div className="navbar-right">
+            <button className="navbar-back" onClick={onBack}>← Back to recipes</button>
+          </div>
+        </nav>
+      )}
 
       <div className="profile-wrap">
         {/* Header card */}

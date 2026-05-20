@@ -3,7 +3,7 @@ import { api } from "../api/client";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-export default function MealPlanPage({ onBack, onSelectRecipe }) {
+export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = false }) {
   const [plan, setPlan]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied]   = useState(false);
@@ -50,23 +50,27 @@ export default function MealPlanPage({ onBack, onSelectRecipe }) {
   const activeDays = DAYS.filter(day => byDay[day].length > 0);
 
   return (
-    <div className="app">
-      <nav className="navbar">
-        <span className="navbar-brand">Cook<span>Smart</span></span>
-        <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>📅 Weekly Meal Plan</span>
-      </nav>
+    <div className={isEmbedded ? "mealplan-embedded" : "app"}>
+      {!isEmbedded && (
+        <nav className="navbar">
+          <span className="navbar-brand">Cook<span>Smart</span></span>
+          <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>📅 Weekly Meal Plan</span>
+        </nav>
+      )}
 
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "1.5rem 1.5rem 5rem" }}>
-        <button className="back-btn" onClick={onBack} style={{ marginBottom: "1.5rem" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
-          </svg>
-          Back to recipes
-        </button>
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: isEmbedded ? "0 0 3rem" : "1.5rem 1.5rem 5rem" }}>
+        {!isEmbedded && (
+          <button className="back-btn" onClick={onBack} style={{ marginBottom: "1.5rem" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+            Back to recipes
+          </button>
+        )}
 
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: ".5rem" }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.9rem", color: "var(--charcoal)" }}>
-            Your Meal Plan
+            📅 Your Meal Plan
           </h2>
           {plan.length > 0 && (
             <span style={{ fontSize: ".85rem", color: "var(--stone)" }}>
@@ -100,7 +104,7 @@ export default function MealPlanPage({ onBack, onSelectRecipe }) {
             <button
               className="nlp-extract-btn"
               style={{ width: "auto", padding: ".65rem 1.5rem" }}
-              onClick={onBack}
+              onClick={onBack || (() => {})}
             >
               Browse recipes
             </button>

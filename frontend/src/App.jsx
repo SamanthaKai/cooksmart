@@ -115,36 +115,6 @@ export default function App() {
     );
   }
 
-  // Profile — requires login
-  if (page === "profile") {
-    if (!user) { setPage("login"); return null; }
-    return (
-      <>
-        <ProfilePage
-          user={user}
-          onBack={() => setPage("home")}
-          onUserUpdate={updatedUser => setUser(updatedUser)}
-          onSelectRecipe={handleSelectRecipe}
-        />
-        <Footer />
-      </>
-    );
-  }
-
-  // Meal Plan — requires login
-  if (page === "mealplan") {
-    if (!user) { setPage("login"); return null; }
-    return (
-      <>
-        <MealPlanPage
-          onBack={() => setPage("home")}
-          onSelectRecipe={handleSelectRecipe}
-        />
-        <Footer />
-      </>
-    );
-  }
-
   const onRecipePage = page === "recipe" && !!currentRecipeId;
 
   return (
@@ -155,9 +125,8 @@ export default function App() {
           onSelectRecipe={handleSelectRecipe}
           user={user}
           onLogout={handleLogout}
-          onProfile={() => setPage("profile")}
-          onMealPlan={() => setPage("mealplan")}
           onLogin={() => setPage("login")}
+          onUserUpdate={updatedUser => setUser(updatedUser)}
           savedIds={savedIds}
           likedIds={likedIds}
           onToggleSave={handleToggleSave}

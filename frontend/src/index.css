@@ -3569,3 +3569,206 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
   .category-pill-icon-wrap { width: 48px; height: 48px; }
   .category-pill { min-width: 54px; font-size: .68rem; }
 }
+
+/* ════════════════════════════════════════
+   ANIMATIONS & INTERACTIVITY
+   ════════════════════════════════════════ */
+
+/* ── Keyframes ── */
+@keyframes cs-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cs-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cs-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(200, 95, 30, .35); }
+  70%  { box-shadow: 0 0 0 8px rgba(200, 95, 30, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 95, 30, 0); }
+}
+
+/* ── View fade transition ── */
+.view-fade {
+  animation: cs-fade-up .24s cubic-bezier(.22, .68, 0, 1.2) both;
+}
+
+/* ── Hero entrance ── */
+.hero-title {
+  animation: cs-slide-up .45s ease-out .04s both;
+}
+.hero-sub {
+  animation: cs-slide-up .45s ease-out .12s both;
+}
+.hero-search-wrap {
+  animation: cs-slide-up .45s ease-out .2s both;
+}
+.ai-gen-cta {
+  animation: cs-slide-up .45s ease-out .3s both;
+}
+
+/* ── Search mode tabs ── */
+.search-mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: .6rem;
+}
+.search-mode-tab {
+  padding: .38rem .9rem;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  background: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--stone);
+  cursor: pointer;
+  transition: all .18s cubic-bezier(.22,.68,0,1.2);
+}
+.search-mode-tab:hover {
+  border-color: var(--earth);
+  color: var(--earth);
+  transform: translateY(-1px);
+}
+.search-mode-tab.active {
+  background: var(--earth);
+  border-color: var(--earth);
+  color: var(--white);
+  font-weight: 600;
+  transform: none;
+}
+
+/* ── Recipe card stagger + hover lift ── */
+.recipe-card {
+  transition: transform .22s cubic-bezier(.22,.68,0,1.2), box-shadow .22s ease;
+  cursor: pointer;
+}
+.recipe-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.13);
+}
+.recipe-card:active {
+  transform: translateY(-2px) scale(.99);
+}
+
+/* Stagger recipe grid children */
+.recipe-grid > *:nth-child(1)  { animation: cs-fade-up .3s ease-out .03s both; }
+.recipe-grid > *:nth-child(2)  { animation: cs-fade-up .3s ease-out .07s both; }
+.recipe-grid > *:nth-child(3)  { animation: cs-fade-up .3s ease-out .11s both; }
+.recipe-grid > *:nth-child(4)  { animation: cs-fade-up .3s ease-out .15s both; }
+.recipe-grid > *:nth-child(5)  { animation: cs-fade-up .3s ease-out .19s both; }
+.recipe-grid > *:nth-child(6)  { animation: cs-fade-up .3s ease-out .23s both; }
+.recipe-grid > *:nth-child(7)  { animation: cs-fade-up .3s ease-out .27s both; }
+.recipe-grid > *:nth-child(8)  { animation: cs-fade-up .3s ease-out .31s both; }
+.recipe-grid > *:nth-child(9)  { animation: cs-fade-up .3s ease-out .35s both; }
+.recipe-grid > *:nth-child(10) { animation: cs-fade-up .3s ease-out .39s both; }
+.recipe-grid > *:nth-child(11) { animation: cs-fade-up .3s ease-out .43s both; }
+.recipe-grid > *:nth-child(12) { animation: cs-fade-up .3s ease-out .47s both; }
+
+/* ── Category pills enhanced hover ── */
+.category-pill {
+  transition: transform .18s cubic-bezier(.22,.68,0,1.2), box-shadow .18s ease, background .15s;
+}
+.category-pill:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 6px 18px rgba(0,0,0,.1);
+}
+.category-pill:active { transform: scale(.97); }
+
+/* ── Sidebar nav interactivity ── */
+.sidebar-nav-item {
+  transition: background .15s, color .15s, transform .12s;
+  position: relative;
+}
+.sidebar-nav-item::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--earth);
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  transform: scaleY(.4);
+}
+.sidebar-nav-item.active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+.sidebar-nav-item:hover:not(.active) { transform: translateX(3px); }
+
+/* ── Primary buttons press effect ── */
+.search-btn, .gen-limit-signin-btn, .sidebar-premium-btn,
+.shopping-add-btn, .rs-premium-btn {
+  transition: transform .12s, box-shadow .12s, background .15s;
+}
+.search-btn:hover        { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(200,95,30,.3); }
+.search-btn:active       { transform: translateY(0) scale(.98); box-shadow: none; }
+.shopping-add-btn:hover  { transform: translateY(-1px); }
+.shopping-add-btn:active { transform: scale(.97); }
+
+/* ── AI toggle button pulse ── */
+.ai-gen-toggle {
+  transition: transform .18s, box-shadow .18s;
+}
+.ai-gen-toggle:hover {
+  transform: translateY(-2px);
+  animation: cs-pulse-ring 1.6s ease-out infinite;
+}
+
+/* ── Search input focus glow ── */
+.search-input:focus, .search-wrap:focus-within {
+  box-shadow: 0 0 0 3px rgba(200, 95, 30, .15);
+}
+.shopping-add-input:focus {
+  box-shadow: 0 0 0 3px rgba(200, 95, 30, .12);
+}
+
+/* ── Profile embedded ── */
+.profile-page--embedded {
+  background: transparent;
+}
+.profile-page--embedded .profile-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 0 3rem;
+}
+
+/* ── Meal plan embedded ── */
+.mealplan-embedded {
+  background: transparent;
+}
+
+/* ── Topbar icon button bounce ── */
+.topbar-icon-btn:hover { transform: scale(1.12); }
+.topbar-icon-btn:active { transform: scale(.95); }
+
+/* ── Shopping item row entrance ── */
+.shopping-list > * {
+  animation: cs-fade-up .2s ease-out both;
+}
+.shopping-list > *:nth-child(1) { animation-delay: .02s; }
+.shopping-list > *:nth-child(2) { animation-delay: .05s; }
+.shopping-list > *:nth-child(3) { animation-delay: .08s; }
+.shopping-list > *:nth-child(4) { animation-delay: .11s; }
+.shopping-list > *:nth-child(5) { animation-delay: .14s; }
+.shopping-list > *:nth-child(6) { animation-delay: .17s; }
+.shopping-list > *:nth-child(7) { animation-delay: .20s; }
+.shopping-list > *:nth-child(8) { animation-delay: .23s; }
+
+/* ── Premium button ── */
+.sidebar-premium-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(200,95,30,.2);
+}
+.sidebar-premium-btn:active { transform: scale(.97); }
+
+/* ── My Recipes / Favorites list entrance ── */
+.view-section-head {
+  animation: cs-slide-up .35s ease-out both;
+}

@@ -2,21 +2,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
 import LeftSidebar from "../components/LeftSidebar";
+import ProfilePage from "./ProfilePage";
+import MealPlanPage from "./MealPlanPage";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater,
   Bell, ChevronDown, SlidersHorizontal, X as XIcon, Plus, Trash2,
 } from "lucide-react";
 
-// ── Category filters ─────────────────────────────────────────────────────────
 const CATEGORY_FILTERS = [
-  { label: "All Recipes", Icon: LayoutGrid,     type: "all" },
-  { label: "African",     Icon: Globe,          type: "cuisine", value: "african" },
-  { label: "Soups",       Icon: Soup,           type: "course",  value: "soup" },
-  { label: "Main Dishes", Icon: UtensilsCrossed,type: "course",  value: "main" },
-  { label: "Snacks",      Icon: Cookie,         type: "course",  value: "snack" },
-  { label: "Breakfast",   Icon: Sun,            type: "course",  value: "breakfast" },
-  { label: "Drinks",      Icon: GlassWater,     type: "course",  value: "beverage" },
+  { label: "All Recipes", Icon: LayoutGrid,      type: "all" },
+  { label: "African",     Icon: Globe,           type: "cuisine", value: "african" },
+  { label: "Soups",       Icon: Soup,            type: "course",  value: "soup" },
+  { label: "Main Dishes", Icon: UtensilsCrossed, type: "course",  value: "main" },
+  { label: "Snacks",      Icon: Cookie,          type: "course",  value: "snack" },
+  { label: "Breakfast",   Icon: Sun,             type: "course",  value: "breakfast" },
+  { label: "Drinks",      Icon: GlassWater,      type: "course",  value: "beverage" },
 ];
 
 function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
@@ -73,16 +74,17 @@ function SkeletonGrid({ count = 8 }) {
 }
 
 export default function Home({
-  onSelectRecipe, user, onLogout, onProfile, onMealPlan, onLogin,
+  onSelectRecipe, user, onLogout, onLogin, onUserUpdate,
   savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin, onAddToMealPlan,
 }) {
-  const { lang, toggleLang, t } = useLang();
-  const [menuOpen, setMenuOpen]        = useState(false);
+  const { t } = useLang();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // ── View state: what the main area shows ─────────────────────────────────
-  const [view, setView] = useState("home"); // "home"|"explore"|"myrecipes"|"favorites"|"shopping"
+  // ── View state ────────────────────────────────────────────────────────────
+  const [view, setView] = useState("home");
+  // "home" | "explore" | "myrecipes" | "favorites" | "shopping" | "mealplan" | "profile"
 
-  // ── Search / filter state ─────────────────────────────────────────────────
+  // ── Search / filter ───────────────────────────────────────────────────────
   const [mode, setMode]               = useState("name");
   const [query, setQuery]             = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -104,10 +106,10 @@ export default function Home({
   const [genRecipe, setGenRecipe]   = useState(null);
   const [generating, setGenerating] = useState(false);
 
-  const [genOpen, setGenOpen]         = useState(false);
-  const [genText, setGenText]         = useState("");
-  const [genPills, setGenPills]       = useState([]);
-  const [genLoading, setGenLoading]   = useState(false);
+  const [genOpen, setGenOpen]       = useState(false);
+  const [genText, setGenText]       = useState("");
+  const [genPills, setGenPills]     = useState([]);
+  const [genLoading, setGenLoading] = useState(false);
 
   const [genCount, setGenCount]       = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
   const [genLimitHit, setGenLimitHit] = useState(false);
@@ -124,11 +126,11 @@ export default function Home({
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ── My Recipes / Favorites view state ─────────────────────────────────────
-  const [viewRecipes, setViewRecipes]   = useState([]);
-  const [viewLoading, setViewLoading]   = useState(false);
+  // ── My Recipes / Favorites ────────────────────────────────────────────────
+  const [viewRecipes, setViewRecipes] = useState([]);
+  const [viewLoading, setViewLoading] = useState(false);
 
-  // ── Shopping list ─────────────────────────────────────────────────────────
+  // ── Shopping list (localStorage) ─────────────────────────────────────────
   const [shoppingItems, setShoppingItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cs_shopping') || '[]'); } catch { return []; }
   });
@@ -137,12 +139,10 @@ export default function Home({
   const suggestRef = useRef(null);
   const ingRef     = useRef(null);
 
-  // Persist shopping list
   useEffect(() => {
     localStorage.setItem('cs_shopping', JSON.stringify(shoppingItems));
   }, [shoppingItems]);
 
-  // Load saved/liked recipes when switching to those views
   useEffect(() => {
     if (view === "myrecipes" && user) {
       setViewLoading(true);
@@ -159,7 +159,7 @@ export default function Home({
     }
   }, [view, user]);
 
-  // ── Browse load ───────────────────────────────────────────────────────────
+  // ── Browse ────────────────────────────────────────────────────────────────
   const loadBrowse = useCallback(async () => {
     setLoading(true);
     try {
@@ -178,10 +178,10 @@ export default function Home({
   }, [cuisine, course, page]);
 
   useEffect(() => {
-    if (view === "explore" || (!searched && view === "home")) loadBrowse();
+    if (view === "explore" || view === "home") loadBrowse();
   }, [loadBrowse, view]);
 
-  // ── Name auto-suggest ─────────────────────────────────────────────────────
+  // ── Autocomplete ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mode !== "name" || query.length < 2) { setSuggestions([]); return; }
     const timer = setTimeout(async () => {
@@ -197,7 +197,6 @@ export default function Home({
     return () => clearTimeout(timer);
   }, [query, mode]);
 
-  // ── Ingredient auto-suggest ───────────────────────────────────────────────
   useEffect(() => {
     if (mode !== "ingredients" || ingInput.length < 2) { setIngSuggest([]); return; }
     const timer = setTimeout(async () => {
@@ -206,7 +205,6 @@ export default function Home({
     return () => clearTimeout(timer);
   }, [ingInput, mode]);
 
-  // ── Close dropdowns on outside click ─────────────────────────────────────
   useEffect(() => {
     function handle(e) {
       if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
@@ -217,7 +215,7 @@ export default function Home({
     return () => document.removeEventListener("mousedown", handle);
   }, [menuOpen]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Search handlers ───────────────────────────────────────────────────────
   async function searchByName(searchQuery) {
     if (!searchQuery.trim()) return;
     setView("explore");
@@ -276,7 +274,7 @@ export default function Home({
         if (ingredients.length) setGenPills(ingredients);
       } catch {}
     }
-    if (!ingredients.length) { setError("Could you describe a bit more what you'd like to cook?"); setGenLoading(false); return; }
+    if (!ingredients.length) { setError("Could you describe a bit more?"); setGenLoading(false); return; }
     setGenerating(true);
     try {
       const data = await api.aiGenerate(ingredients, context);
@@ -364,14 +362,18 @@ export default function Home({
     } else if (id === "explore") {
       setView("explore");
       setSearched(false); setQuery("");
-    } else if (id === "myrecipes" || id === "favorites") {
-      setView(id);
-    } else if (id === "shopping") {
-      setView("shopping");
+    } else if (id === "mealplan") {
+      if (!user) { onLogin(); return; }
+      setView("mealplan");
+    } else if (id === "profile") {
+      if (!user) { onLogin(); return; }
+      setView("profile");
+    } else {
+      setView(id); // myrecipes | favorites | shopping
     }
   }
 
-  // ── Shopping list helpers ─────────────────────────────────────────────────
+  // ── Shopping helpers ──────────────────────────────────────────────────────
   function addShoppingItem() {
     const name = shoppingInput.trim();
     if (!name) return;
@@ -410,15 +412,18 @@ export default function Home({
 
   const pillHint = pills.length === 0 ? "Add at least 2 ingredients"
     : pills.length === 1 ? "Add 1 more ingredient"
-    : `${pills.length} ingredients added — ready to search!`;
+    : `${pills.length} ingredients — ready to search!`;
 
-  // Derive active page for sidebar highlighting
-  const activePage = view === "myrecipes"  ? "myrecipes"
-    : view === "favorites"  ? "favorites"
-    : view === "shopping"   ? "shopping"
-    : searched || view === "explore" ? "explore"
-    : (cuisine || course)   ? "categories"
-    : "home";
+  const activePage =
+    view === "myrecipes" ? "myrecipes" :
+    view === "favorites" ? "favorites" :
+    view === "shopping"  ? "shopping"  :
+    view === "mealplan"  ? "mealplan"  :
+    view === "profile"   ? "profile"   :
+    searched || view === "explore" ? "explore" :
+    (cuisine || course) ? "categories" : "home";
+
+  const isHeroView = view === "home" || view === "explore";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -435,25 +440,10 @@ export default function Home({
         </button>
 
         <div className="topbar-right">
-          {/* Language toggle */}
-          <div style={{ display: "inline-flex", border: "1.5px solid var(--border)", borderRadius: 99, overflow: "hidden", flexShrink: 0 }}>
-            {["en", "lg"].map(code => (
-              <button key={code} onClick={() => lang !== code && toggleLang()} style={{
-                padding: "3px 9px", border: "none", cursor: "pointer",
-                fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
-                letterSpacing: ".04em", transition: "all .15s",
-                background: lang === code ? "var(--earth)" : "transparent",
-                color:      lang === code ? "var(--white)" : "var(--stone)",
-              }}>{code.toUpperCase()}</button>
-            ))}
-          </div>
-
-          {/* Bell */}
           <button className="topbar-icon-btn" aria-label="Notifications">
             <Bell size={18} strokeWidth={1.8} />
           </button>
 
-          {/* User — avatar only, no greeting */}
           {user ? (
             <div className="topbar-user">
               <div className="topbar-avatar">{user.name[0].toUpperCase()}</div>
@@ -474,9 +464,9 @@ export default function Home({
           {user ? (
             <>
               <p className="mobile-menu-greeting">Hi, {user.name.split(" ")[0]}</p>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onMealPlan(); setMenuOpen(false); }}>{t("nav_mealplan")}</button>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { onProfile(); setMenuOpen(false); }}>{t("nav_profile")}</button>
-              <button className="mobile-menu-btn mobile-menu-btn--ghost"     onClick={() => { onLogout(); setMenuOpen(false); }}>{t("nav_signout")}</button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("mealplan"); setMenuOpen(false); }}>Meal Planner</button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("profile"); setMenuOpen(false); }}>My Profile</button>
+              <button className="mobile-menu-btn mobile-menu-btn--ghost" onClick={() => { onLogout(); setMenuOpen(false); }}>{t("nav_signout")}</button>
             </>
           ) : (
             <button className="mobile-menu-btn" onClick={() => { onLogin(); setMenuOpen(false); }}>{t("nav_signin")}</button>
@@ -487,558 +477,550 @@ export default function Home({
       {/* ── Two-column body ── */}
       <div className="home-body">
 
-        {/* Left sidebar */}
         <LeftSidebar
           user={user}
           onLogin={onLogin}
-          onMealPlan={onMealPlan}
-          onProfile={onProfile}
           activePage={activePage}
           onNavigate={handleSidebarNavigate}
           onCategorySelect={handleCatClick}
         />
 
-        {/* Main content */}
         <main className="home-main">
+          {/* fade wrapper — key forces re-mount → animation fires on every view change */}
+          <div key={view} className="view-fade">
 
-          {/* ════════════════════════════════════════
-              MY RECIPES VIEW (saved)
-          ════════════════════════════════════════ */}
-          {view === "myrecipes" && (
-            <div className="home-content">
-              <div className="view-section-head">
-                <h2 className="view-section-title">🔖 My Recipes</h2>
-                <p className="view-section-sub">Recipes you've saved</p>
-              </div>
-              {viewLoading ? <SkeletonGrid count={6} /> : viewRecipes.length === 0 ? (
-                <div className="state-center">
-                  <div className="emoji">🔖</div>
-                  <h3>No saved recipes yet</h3>
-                  <p>Tap the bookmark icon on any recipe to save it here.</p>
-                  <button className="search-btn" style={{ marginTop: "1.5rem", width: "auto", padding: ".65rem 1.75rem" }}
-                    onClick={() => handleSidebarNavigate("explore")}>Browse Recipes</button>
-                </div>
-              ) : (
-                <div className="recipe-grid">
-                  {viewRecipes.map(r => (
-                    <RecipeCard key={r.id} recipe={r} emoji={emoji(r)}
-                      onClick={() => onSelectRecipe(r.id)}
-                      isSaved={savedIds?.has(r.id)}
-                      onToggleSave={onToggleSave || onRequestLogin}
-                      onAddToMealPlan={onAddToMealPlan} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ════════════════════════════════════════
-              FAVORITES VIEW (liked)
-          ════════════════════════════════════════ */}
-          {view === "favorites" && (
-            <div className="home-content">
-              <div className="view-section-head">
-                <h2 className="view-section-title">❤️ Favorites</h2>
-                <p className="view-section-sub">Recipes you've liked</p>
-              </div>
-              {viewLoading ? <SkeletonGrid count={6} /> : viewRecipes.length === 0 ? (
-                <div className="state-center">
-                  <div className="emoji">❤️</div>
-                  <h3>No favorites yet</h3>
-                  <p>Tap the heart icon on any recipe to add it here.</p>
-                  <button className="search-btn" style={{ marginTop: "1.5rem", width: "auto", padding: ".65rem 1.75rem" }}
-                    onClick={() => handleSidebarNavigate("explore")}>Browse Recipes</button>
-                </div>
-              ) : (
-                <div className="recipe-grid">
-                  {viewRecipes.map(r => (
-                    <RecipeCard key={r.id} recipe={r} emoji={emoji(r)}
-                      onClick={() => onSelectRecipe(r.id)}
-                      isSaved={savedIds?.has(r.id)}
-                      onToggleSave={onToggleSave || onRequestLogin}
-                      onAddToMealPlan={onAddToMealPlan} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ════════════════════════════════════════
-              SHOPPING LIST VIEW
-          ════════════════════════════════════════ */}
-          {view === "shopping" && (
-            <div className="home-content">
-              <div className="view-section-head">
-                <h2 className="view-section-title">🛒 Shopping List</h2>
-                <p className="view-section-sub">Your grocery items</p>
-              </div>
-
-              {/* Add item */}
-              <div className="shopping-add-row">
-                <input
-                  className="shopping-add-input"
-                  placeholder="Add an item…"
-                  value={shoppingInput}
-                  onChange={e => setShoppingInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && addShoppingItem()}
-                />
-                <button className="shopping-add-btn" onClick={addShoppingItem}>
-                  <Plus size={16} strokeWidth={2} />
-                  Add
-                </button>
-              </div>
-
-              {shoppingItems.length === 0 ? (
-                <div className="state-center" style={{ paddingTop: "3rem" }}>
-                  <div className="emoji">🛒</div>
-                  <h3>Your list is empty</h3>
-                  <p>Type an item above and press Enter to add it.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="shopping-list">
-                    {shoppingItems.map(item => (
-                      <label key={item.id} className="shopping-item-row">
-                        <input
-                          type="checkbox"
-                          checked={item.checked}
-                          onChange={() => toggleShoppingItem(item.id)}
-                          className="shopping-item-check"
-                        />
-                        <span className={`shopping-item-name${item.checked ? " checked" : ""}`}>{item.name}</span>
-                        <button
-                          className="shopping-item-delete"
-                          onClick={() => removeShoppingItem(item.id)}
-                          title="Remove item"
-                        >
-                          <Trash2 size={14} strokeWidth={1.8} />
-                        </button>
-                      </label>
-                    ))}
-                  </div>
-                  {shoppingItems.some(i => i.checked) && (
-                    <button className="shopping-clear-btn" onClick={clearCheckedItems}>
-                      Clear checked items
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ════════════════════════════════════════
-              HOME + EXPLORE VIEWS
-          ════════════════════════════════════════ */}
-          {(view === "home" || view === "explore") && (
-            <>
-              {/* ── Hero ── */}
-              <div className="hero">
-                <h1>Good food. Made easy.<br />Made for you.</h1>
-                <p>Discover African recipes, get smart suggestions and cook with confidence.</p>
-
-                {/* Search bar */}
-                <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }}>
-                  {mode === "name" ? (
-                    <form className="search-wrap" onSubmit={handleNameSearch}>
-                      <span className="search-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                        </svg>
-                      </span>
-                      <input
-                        className="search-input"
-                        placeholder={t("search_placeholder")}
-                        value={query}
-                        onChange={e => { setQuery(e.target.value); setShowSuggest(true); }}
-                        onFocus={() => setShowSuggest(true)}
-                        autoComplete="off"
-                      />
-                      <button type="button" className="search-mode-btn" onClick={() => switchMode("ingredients")} title="Search by ingredients">
-                        <SlidersHorizontal size={15} strokeWidth={1.8} />
-                      </button>
-                      {showSuggest && suggestions.length > 0 && (
-                        <div className="suggest-dropdown">
-                          {suggestions.map(s => (
-                            <div key={s.id} className="suggest-item"
-                              onMouseDown={() => { setQuery(s.name); setShowSuggest(false); onSelectRecipe(s.id); }}>
-                              <span className="suggest-item-name">{s.name}</span>
-                              <span className="suggest-item-meta">{s.cuisine_type} · {s.course}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </form>
-                  ) : (
-                    <div className="search-wrap ing-mode-wrap">
-                      <PillInput
-                        pills={pills} ingInput={ingInput} ingRef={ingRef}
-                        ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
-                        onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
-                        onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
-                      />
-                      <button type="button" className="search-mode-btn search-mode-btn--close" onClick={() => switchMode("name")} title="Back to recipe search">
-                        <XIcon size={15} strokeWidth={2} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {mode === "name" && (
-                  <div className="popular-chips">
-                    <span className="popular-label">Popular searches:</span>
-                    {["Jollof Rice", "Pepper Soup", "Plantain", "Beef Stew", "Moi Moi"].map(q => (
-                      <button key={q} className="popular-chip" onClick={() => { setQuery(q); searchByName(q); }}>{q}</button>
-                    ))}
-                  </div>
-                )}
-
-                {mode === "ingredients" && (
-                  <div style={{ marginTop: ".75rem" }}>
-                    <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
-                      {loading ? "…" : t("search_ing_btn")}
-                    </button>
-                  </div>
-                )}
-
-                {/* AI Generate CTA */}
-                <div className="ai-gen-cta">
-                  {!genOpen ? (
-                    <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
-                      ✨ Not sure what to cook? Use CookSmart AI
-                    </button>
-                  ) : genLimitHit ? (
-                    <div className="gen-limit-box">
-                      <p>You've used your 2 free generations. Sign in to keep building your plate.</p>
-                      <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-                        <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
-                        <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setGenRecipe(null); setError(""); }}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="ai-gen-box">
-                      <textarea
-                        className="nlp-textarea"
-                        placeholder='Describe what you have in plain English, e.g. "I have chicken, tomatoes and some garlic at home"'
-                        value={genText}
-                        onChange={e => setGenText(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
-                        rows={3} autoFocus
-                      />
-                      {!user && (
-                        <p className="gen-guest-note">
-                          {genCount === 0 ? "2 free generations available — sign in for unlimited." :
-                           genCount === 1 ? "1 free generation left — sign in for unlimited." : null}
-                        </p>
-                      )}
-                      <div className="ai-gen-actions">
-                        <button className="search-btn" onClick={handleGenerate}
-                          disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
-                          {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
-                        </button>
-                        <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Content area ── */}
+            {/* ════ MY RECIPES ════ */}
+            {view === "myrecipes" && (
               <div className="home-content">
-                {error && <div className="error-banner">{error}</div>}
-
-                {generating && (
-                  <div className="gen-loading">
-                    <div className="spinner" style={{ margin: "0 auto 1rem" }} />
-                    <p>CookSmart AI is creating your recipe…</p>
-                    <p style={{ fontSize: ".85rem", marginTop: ".35rem" }}>This may take a few seconds.</p>
+                <div className="view-section-head">
+                  <h2 className="view-section-title">🔖 My Recipes</h2>
+                  <p className="view-section-sub">Recipes you've saved</p>
+                </div>
+                {viewLoading ? <SkeletonGrid count={6} /> : viewRecipes.length === 0 ? (
+                  <div className="state-center">
+                    <div className="emoji">🔖</div>
+                    <h3>No saved recipes yet</h3>
+                    <p>Tap the bookmark icon on any recipe to save it here.</p>
+                    <button className="search-btn" style={{ marginTop: "1.5rem", width: "auto", padding: ".65rem 1.75rem" }}
+                      onClick={() => handleSidebarNavigate("explore")}>Browse Recipes</button>
+                  </div>
+                ) : (
+                  <div className="recipe-grid">
+                    {viewRecipes.map(r => (
+                      <RecipeCard key={r.id} recipe={r} emoji={emoji(r)}
+                        onClick={() => onSelectRecipe(r.id)}
+                        isSaved={savedIds?.has(r.id)}
+                        onToggleSave={onToggleSave || onRequestLogin}
+                        onAddToMealPlan={onAddToMealPlan} />
+                    ))}
                   </div>
                 )}
+              </div>
+            )}
 
-                {genClarifyMsg && (
-                  <div className="gen-clarify-box">
-                    <span className="gen-clarify-icon">🍽️</span>
-                    <p>{genClarifyMsg}</p>
+            {/* ════ FAVORITES ════ */}
+            {view === "favorites" && (
+              <div className="home-content">
+                <div className="view-section-head">
+                  <h2 className="view-section-title">❤️ Favorites</h2>
+                  <p className="view-section-sub">Recipes you've liked</p>
+                </div>
+                {viewLoading ? <SkeletonGrid count={6} /> : viewRecipes.length === 0 ? (
+                  <div className="state-center">
+                    <div className="emoji">❤️</div>
+                    <h3>No favorites yet</h3>
+                    <p>Tap the heart icon on any recipe to add it here.</p>
+                    <button className="search-btn" style={{ marginTop: "1.5rem", width: "auto", padding: ".65rem 1.75rem" }}
+                      onClick={() => handleSidebarNavigate("explore")}>Browse Recipes</button>
+                  </div>
+                ) : (
+                  <div className="recipe-grid">
+                    {viewRecipes.map(r => (
+                      <RecipeCard key={r.id} recipe={r} emoji={emoji(r)}
+                        onClick={() => onSelectRecipe(r.id)}
+                        isSaved={savedIds?.has(r.id)}
+                        onToggleSave={onToggleSave || onRequestLogin}
+                        onAddToMealPlan={onAddToMealPlan} />
+                    ))}
                   </div>
                 )}
+              </div>
+            )}
 
-                {/* AI-generated recipe panel */}
-                {genRecipe && (
-                  <div className="gen-panel">
-                    {genRecipe.sections ? (
-                      <>
-                        <div className="gen-header">
-                          <span className="ai-badge gen-badge">AI-Generated Meal</span>
-                          <h2 className="gen-title">Combination Meal</h2>
-                          <p className="gen-desc">{genRecipe.sections.length} dishes generated based on your request.</p>
-                        </div>
-                        {genRecipe.sections.map((section, idx) => (
-                          <div key={idx} className="combo-section">
-                            <div className={`combo-label combo-label--${(section.label || "").toLowerCase()}`}>{section.label}</div>
-                            <div className="combo-recipe-header">
-                              <h3 className="combo-dish-name">{section.dish_name}</h3>
-                              {section.local_name && <p className="gen-local">{section.local_name}</p>}
-                              <p className="gen-desc combo-desc">{section.description}</p>
-                              <div className="gen-meta">
-                                {section.cuisine      && <span className="meta-chip cuisine">{section.cuisine}</span>}
-                                {section.cooking_time && <span className="meta-chip">⏱ {section.cooking_time}</span>}
-                                {section.servings     && <span className="meta-chip">👥 {section.servings}</span>}
-                              </div>
-                            </div>
-                            <div className="gen-body">
-                              <div className="gen-section">
-                                <h3>{t("ingredients")}</h3>
-                                <ul className="gen-ing-list">
-                                  {(section.ingredients || []).map((ing, i) => (
-                                    <li key={i} className="gen-ing-item">
-                                      <span className="gen-ing-name">{ing.item}</span>
-                                      <span className="gen-ing-qty">{ing.quantity}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="gen-section">
-                                <h3>{t("instructions")}</h3>
-                                <ol className="gen-steps">
-                                  {(section.steps || []).map((step, i) => (
-                                    <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
-                                  ))}
-                                </ol>
-                              </div>
-                            </div>
-                            {section.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {section.tips}</div>}
-                            {section.health_tip && (
-                              <div className="gen-health-tip">
-                                <span className="gen-health-icon">🌿</span>
-                                <div><strong>Health Tip</strong><p>{section.health_tip}</p></div>
-                              </div>
-                            )}
-                            <div className="gen-save-bar">
-                              <button
-                                className={`gen-save-btn${genSectionSaved[idx] ? " saved" : ""}`}
-                                onClick={user ? () => handleSaveSectionRecipe(section, idx) : undefined}
-                                disabled={!user || genSectionSaving[idx] || genSectionSaved[idx]}
-                                title={!user ? "Sign in to save this recipe" : undefined}
-                              >
-                                {genSectionSaved[idx] ? "✓ Saved!" : genSectionSaving[idx] ? "Saving…" : "Save to my profile"}
-                              </button>
-                              {!user && <span className="gen-save-hint">Sign in to save</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <>
-                        <div className="gen-header">
-                          <span className="ai-badge gen-badge">AI-Generated Recipe</span>
-                          <h2 className="gen-title">{genRecipe.dish_name}</h2>
-                          {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
-                          <p className="gen-desc">{genRecipe.description}</p>
-                          <div className="gen-meta">
-                            {genRecipe.cuisine      && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
-                            {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
-                            {genRecipe.servings     && <span className="meta-chip">👥 {genRecipe.servings}</span>}
-                          </div>
-                        </div>
-                        <div className="gen-body">
-                          <div className="gen-section">
-                            <h3>{t("ingredients")}</h3>
-                            <ul className="gen-ing-list">
-                              {(genRecipe.ingredients || []).map((ing, i) => (
-                                <li key={i} className="gen-ing-item">
-                                  <span className="gen-ing-name">{ing.item}</span>
-                                  <span className="gen-ing-qty">{ing.quantity}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="gen-section">
-                            <h3>{t("instructions")}</h3>
-                            <ol className="gen-steps">
-                              {(genRecipe.steps || []).map((step, i) => (
-                                <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        </div>
-                        {genRecipe.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>}
-                        {genRecipe.health_tip && (
-                          <div className="gen-health-tip">
-                            <span className="gen-health-icon">🌿</span>
-                            <div><strong>Health Tip</strong><p>{genRecipe.health_tip}</p></div>
-                          </div>
-                        )}
-                        <div className="gen-save-bar">
-                          <button
-                            className={`gen-save-btn${genSaved ? " saved" : ""}`}
-                            onClick={user ? handleSaveRecipe : undefined}
-                            disabled={!user || genSaving || genSaved}
-                            title={!user ? "Sign in to save this recipe" : undefined}
-                          >
-                            {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
+            {/* ════ SHOPPING LIST ════ */}
+            {view === "shopping" && (
+              <div className="home-content">
+                <div className="view-section-head">
+                  <h2 className="view-section-title">🛒 Shopping List</h2>
+                  <p className="view-section-sub">Your grocery items</p>
+                </div>
+                <div className="shopping-add-row">
+                  <input
+                    className="shopping-add-input"
+                    placeholder="Add an item…"
+                    value={shoppingInput}
+                    onChange={e => setShoppingInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && addShoppingItem()}
+                  />
+                  <button className="shopping-add-btn" onClick={addShoppingItem}>
+                    <Plus size={16} strokeWidth={2} /> Add
+                  </button>
+                </div>
+                {shoppingItems.length === 0 ? (
+                  <div className="state-center" style={{ paddingTop: "3rem" }}>
+                    <div className="emoji">🛒</div>
+                    <h3>Your list is empty</h3>
+                    <p>Type an item above and press Enter to add it.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="shopping-list">
+                      {shoppingItems.map(item => (
+                        <label key={item.id} className="shopping-item-row">
+                          <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} className="shopping-item-check" />
+                          <span className={`shopping-item-name${item.checked ? " checked" : ""}`}>{item.name}</span>
+                          <button className="shopping-item-delete" onClick={() => removeShoppingItem(item.id)} title="Remove">
+                            <Trash2 size={14} strokeWidth={1.8} />
                           </button>
-                          {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* ── Category pills — shown on both home and explore ── */}
-                {!searched && (
-                  <div className="category-section">
-                    <div className="section-head-row" style={{ marginBottom: ".85rem" }}>
-                      <h2 className="category-section-title" style={{ marginBottom: 0 }}>Browse by category</h2>
-                    </div>
-                    <div className="category-pills">
-                      {CATEGORY_FILTERS.map(cat => (
-                        <button
-                          key={cat.label}
-                          className={`category-pill${isCatActive(cat) ? " active" : ""}`}
-                          onClick={() => handleCatClick(cat)}
-                        >
-                          <div className="category-pill-icon-wrap">
-                            <cat.Icon size={22} strokeWidth={1.8} />
-                          </div>
-                          <span className="category-pill-label">{cat.label}</span>
-                        </button>
+                        </label>
                       ))}
                     </div>
-                  </div>
+                    {shoppingItems.some(i => i.checked) && (
+                      <button className="shopping-clear-btn" onClick={clearCheckedItems}>Clear checked items</button>
+                    )}
+                  </>
                 )}
+              </div>
+            )}
 
-                {/* ── Recipe sections — ONLY shown in explore view ── */}
-                {view === "explore" && (
-                  <>
-                    {/* AI ingredient results */}
-                    {mode === "ingredients" && searched && aiResults.length > 0 && (
-                      <div style={{ marginBottom: "2.5rem" }}>
-                        <h2 className="section-heading">
-                          AI suggestions <span className="ai-badge">CookSmart AI</span>
-                          <span className="count">{aiResults.length} picks</span>
-                        </h2>
-                        <div className="recipe-grid">
-                          {aiResults.map(r => (
-                            <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
-                              aiReason={r.ai_reason} isSaved={savedIds?.has(r.id)}
-                              onToggleSave={onToggleSave || onRequestLogin} onAddToMealPlan={onAddToMealPlan} />
-                          ))}
+            {/* ════ MEAL PLAN — embedded ════ */}
+            {view === "mealplan" && (
+              <div className="home-content">
+                <MealPlanPage
+                  isEmbedded
+                  onBack={() => handleSidebarNavigate("explore")}
+                  onSelectRecipe={onSelectRecipe}
+                />
+              </div>
+            )}
+
+            {/* ════ PROFILE — embedded ════ */}
+            {view === "profile" && user && (
+              <div className="home-content">
+                <ProfilePage
+                  isEmbedded
+                  user={user}
+                  onBack={() => handleSidebarNavigate("home")}
+                  onUserUpdate={onUserUpdate}
+                  onSelectRecipe={onSelectRecipe}
+                />
+              </div>
+            )}
+
+            {/* ════ HOME + EXPLORE ════ */}
+            {isHeroView && (
+              <>
+                {/* ── Hero ── */}
+                <div className="hero">
+                  <h1 className="hero-title">Good food. Made easy.<br />Made for you.</h1>
+                  <p className="hero-sub">Discover African recipes, get smart suggestions and cook with confidence.</p>
+
+                  {/* Search bar */}
+                  <div ref={suggestRef} style={{ position: "relative", zIndex: 10 }} className="hero-search-wrap">
+                    <div className="search-mode-tabs">
+                      <button
+                        className={`search-mode-tab${mode === "name" ? " active" : ""}`}
+                        onClick={() => mode !== "name" && switchMode("name")}
+                      >By Recipe Name</button>
+                      <button
+                        className={`search-mode-tab${mode === "ingredients" ? " active" : ""}`}
+                        onClick={() => mode !== "ingredients" && switchMode("ingredients")}
+                      >By Ingredients</button>
+                    </div>
+
+                    {mode === "name" ? (
+                      <form className="search-wrap" onSubmit={handleNameSearch}>
+                        <span className="search-icon">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                          </svg>
+                        </span>
+                        <input
+                          className="search-input"
+                          placeholder={t("search_placeholder")}
+                          value={query}
+                          onChange={e => { setQuery(e.target.value); setShowSuggest(true); }}
+                          onFocus={() => setShowSuggest(true)}
+                          autoComplete="off"
+                        />
+                        {showSuggest && suggestions.length > 0 && (
+                          <div className="suggest-dropdown">
+                            {suggestions.map(s => (
+                              <div key={s.id} className="suggest-item"
+                                onMouseDown={() => { setQuery(s.name); setShowSuggest(false); onSelectRecipe(s.id); }}>
+                                <span className="suggest-item-name">{s.name}</span>
+                                <span className="suggest-item-meta">{s.cuisine_type} · {s.course}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </form>
+                    ) : (
+                      <div className="search-wrap ing-mode-wrap">
+                        <PillInput
+                          pills={pills} ingInput={ingInput} ingRef={ingRef}
+                          ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
+                          onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
+                          onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
+                        />
+                        <button type="button" className="search-mode-btn search-mode-btn--close" onClick={() => switchMode("name")}>
+                          <XIcon size={15} strokeWidth={2} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {mode === "ingredients" && (
+                    <div style={{ marginTop: ".75rem" }}>
+                      <button className="search-btn" onClick={handleIngSearch} disabled={pills.length < 2 || loading}>
+                        {loading ? "…" : t("search_ing_btn")}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* AI Generate CTA */}
+                  <div className="ai-gen-cta">
+                    {!genOpen ? (
+                      <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
+                        ✨ Not sure what to cook? Use CookSmart AI
+                      </button>
+                    ) : genLimitHit ? (
+                      <div className="gen-limit-box">
+                        <p>You've used your 2 free generations. Sign in to keep going.</p>
+                        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                          <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
+                          <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setGenRecipe(null); setError(""); }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ai-gen-box">
+                        <textarea
+                          className="nlp-textarea"
+                          placeholder='e.g. "I have chicken, tomatoes and some garlic at home"'
+                          value={genText}
+                          onChange={e => setGenText(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
+                          rows={3} autoFocus
+                        />
+                        {!user && (
+                          <p className="gen-guest-note">
+                            {genCount === 0 ? "2 free generations available — sign in for unlimited." :
+                             genCount === 1 ? "1 free generation left." : null}
+                          </p>
+                        )}
+                        <div className="ai-gen-actions">
+                          <button className="search-btn" onClick={handleGenerate}
+                            disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
+                            {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
+                          </button>
+                          <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setGenRecipe(null); setError(""); setGenLimitHit(false); }}>
+                            Cancel
+                          </button>
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
 
-                    {mode === "ingredients" && searched && aiLoading && (
-                      <div style={{ marginBottom: "2rem", padding: "1.5rem", background: "var(--white)", borderRadius: "var(--radius)", border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div className="spinner" style={{ margin: 0, width: 24, height: 24, borderWidth: 2 }} />
-                        <span style={{ fontSize: ".9rem", color: "var(--stone)" }}>CookSmart AI is finding the best matches…</span>
-                      </div>
-                    )}
+                {/* ── Content area ── */}
+                <div className="home-content">
+                  {error && <div className="error-banner">{error}</div>}
 
-                    {loading && !aiLoading && <SkeletonGrid />}
+                  {generating && (
+                    <div className="gen-loading">
+                      <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+                      <p>CookSmart AI is creating your recipe…</p>
+                    </div>
+                  )}
 
-                    {!loading && results.length > 0 && (
-                      !searched && !cuisine && !course && results.length >= 6 ? (
+                  {genClarifyMsg && (
+                    <div className="gen-clarify-box">
+                      <span className="gen-clarify-icon">🍽️</span>
+                      <p>{genClarifyMsg}</p>
+                    </div>
+                  )}
+
+                  {/* AI-generated recipe panel */}
+                  {genRecipe && (
+                    <div className="gen-panel">
+                      {genRecipe.sections ? (
                         <>
-                          <div className="recipe-section">
-                            <div className="section-head-row">
-                              <h2 className="section-heading">
-                                Recommended for you
-                                <span className="section-tag">Based on your preferences</span>
-                              </h2>
-                              <button className="section-view-all" onClick={() => setCourse("main")}>View all</button>
+                          <div className="gen-header">
+                            <span className="ai-badge gen-badge">AI-Generated Meal</span>
+                            <h2 className="gen-title">Combination Meal</h2>
+                            <p className="gen-desc">{genRecipe.sections.length} dishes generated based on your request.</p>
+                          </div>
+                          {genRecipe.sections.map((section, idx) => (
+                            <div key={idx} className="combo-section">
+                              <div className={`combo-label combo-label--${(section.label || "").toLowerCase()}`}>{section.label}</div>
+                              <div className="combo-recipe-header">
+                                <h3 className="combo-dish-name">{section.dish_name}</h3>
+                                {section.local_name && <p className="gen-local">{section.local_name}</p>}
+                                <p className="gen-desc combo-desc">{section.description}</p>
+                                <div className="gen-meta">
+                                  {section.cuisine      && <span className="meta-chip cuisine">{section.cuisine}</span>}
+                                  {section.cooking_time && <span className="meta-chip">⏱ {section.cooking_time}</span>}
+                                  {section.servings     && <span className="meta-chip">👥 {section.servings}</span>}
+                                </div>
+                              </div>
+                              <div className="gen-body">
+                                <div className="gen-section">
+                                  <h3>{t("ingredients")}</h3>
+                                  <ul className="gen-ing-list">
+                                    {(section.ingredients || []).map((ing, i) => (
+                                      <li key={i} className="gen-ing-item">
+                                        <span className="gen-ing-name">{ing.item}</span>
+                                        <span className="gen-ing-qty">{ing.quantity}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                <div className="gen-section">
+                                  <h3>{t("instructions")}</h3>
+                                  <ol className="gen-steps">
+                                    {(section.steps || []).map((step, i) => (
+                                      <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                                    ))}
+                                  </ol>
+                                </div>
+                              </div>
+                              {section.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {section.tips}</div>}
+                              {section.health_tip && (
+                                <div className="gen-health-tip">
+                                  <span className="gen-health-icon">🌿</span>
+                                  <div><strong>Health Tip</strong><p>{section.health_tip}</p></div>
+                                </div>
+                              )}
+                              <div className="gen-save-bar">
+                                <button
+                                  className={`gen-save-btn${genSectionSaved[idx] ? " saved" : ""}`}
+                                  onClick={user ? () => handleSaveSectionRecipe(section, idx) : undefined}
+                                  disabled={!user || genSectionSaving[idx] || genSectionSaved[idx]}
+                                  title={!user ? "Sign in to save" : undefined}
+                                >
+                                  {genSectionSaved[idx] ? "✓ Saved!" : genSectionSaving[idx] ? "Saving…" : "Save to my profile"}
+                                </button>
+                                {!user && <span className="gen-save-hint">Sign in to save</span>}
+                              </div>
                             </div>
-                            <div className="recipe-grid">
-                              {results.slice(0, 3).map(r => (
-                                <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
-                                  isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
-                                  onAddToMealPlan={onAddToMealPlan} />
-                              ))}
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          <div className="gen-header">
+                            <span className="ai-badge gen-badge">AI-Generated Recipe</span>
+                            <h2 className="gen-title">{genRecipe.dish_name}</h2>
+                            {genRecipe.local_name && <p className="gen-local">{genRecipe.local_name}</p>}
+                            <p className="gen-desc">{genRecipe.description}</p>
+                            <div className="gen-meta">
+                              {genRecipe.cuisine      && <span className="meta-chip cuisine">{genRecipe.cuisine}</span>}
+                              {genRecipe.cooking_time && <span className="meta-chip">⏱ {genRecipe.cooking_time}</span>}
+                              {genRecipe.servings     && <span className="meta-chip">👥 {genRecipe.servings}</span>}
                             </div>
                           </div>
+                          <div className="gen-body">
+                            <div className="gen-section">
+                              <h3>{t("ingredients")}</h3>
+                              <ul className="gen-ing-list">
+                                {(genRecipe.ingredients || []).map((ing, i) => (
+                                  <li key={i} className="gen-ing-item">
+                                    <span className="gen-ing-name">{ing.item}</span>
+                                    <span className="gen-ing-qty">{ing.quantity}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="gen-section">
+                              <h3>{t("instructions")}</h3>
+                              <ol className="gen-steps">
+                                {(genRecipe.steps || []).map((step, i) => (
+                                  <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          </div>
+                          {genRecipe.tips && <div className="gen-tips"><strong>Chef's tip:</strong> {genRecipe.tips}</div>}
+                          {genRecipe.health_tip && (
+                            <div className="gen-health-tip">
+                              <span className="gen-health-icon">🌿</span>
+                              <div><strong>Health Tip</strong><p>{genRecipe.health_tip}</p></div>
+                            </div>
+                          )}
+                          <div className="gen-save-bar">
+                            <button
+                              className={`gen-save-btn${genSaved ? " saved" : ""}`}
+                              onClick={user ? handleSaveRecipe : undefined}
+                              disabled={!user || genSaving || genSaved}
+                              title={!user ? "Sign in to save" : undefined}
+                            >
+                              {genSaved ? "✓ Saved to profile!" : genSaving ? "Saving…" : "Save to my profile"}
+                            </button>
+                            {!user && <span className="gen-save-hint">Sign in to save this recipe</span>}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
 
-                          {results.length > 3 && (
+                  {/* ── Category pills — EXPLORE only ── */}
+                  {view === "explore" && !searched && (
+                    <div className="category-section">
+                      <div className="section-head-row" style={{ marginBottom: ".85rem" }}>
+                        <h2 className="category-section-title" style={{ marginBottom: 0 }}>Browse by category</h2>
+                      </div>
+                      <div className="category-pills">
+                        {CATEGORY_FILTERS.map(cat => (
+                          <button
+                            key={cat.label}
+                            className={`category-pill${isCatActive(cat) ? " active" : ""}`}
+                            onClick={() => handleCatClick(cat)}
+                          >
+                            <div className="category-pill-icon-wrap">
+                              <cat.Icon size={22} strokeWidth={1.8} />
+                            </div>
+                            <span className="category-pill-label">{cat.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Recipe sections — EXPLORE only ── */}
+                  {view === "explore" && (
+                    <>
+                      {mode === "ingredients" && searched && aiResults.length > 0 && (
+                        <div style={{ marginBottom: "2.5rem" }}>
+                          <h2 className="section-heading">
+                            AI suggestions <span className="ai-badge">CookSmart AI</span>
+                            <span className="count">{aiResults.length} picks</span>
+                          </h2>
+                          <div className="recipe-grid">
+                            {aiResults.map(r => (
+                              <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                                aiReason={r.ai_reason} isSaved={savedIds?.has(r.id)}
+                                onToggleSave={onToggleSave || onRequestLogin} onAddToMealPlan={onAddToMealPlan} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {mode === "ingredients" && searched && aiLoading && (
+                        <div style={{ marginBottom: "2rem", padding: "1.5rem", background: "var(--white)", borderRadius: "var(--radius)", border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                          <div className="spinner" style={{ margin: 0, width: 24, height: 24, borderWidth: 2 }} />
+                          <span style={{ fontSize: ".9rem", color: "var(--stone)" }}>CookSmart AI is finding the best matches…</span>
+                        </div>
+                      )}
+
+                      {loading && !aiLoading && <SkeletonGrid />}
+
+                      {!loading && results.length > 0 && (
+                        !searched && !cuisine && !course && results.length >= 6 ? (
+                          <>
                             <div className="recipe-section">
                               <div className="section-head-row">
                                 <h2 className="section-heading">
-                                  Trending this week
-                                  <span className="section-tag">Popular with our community</span>
+                                  Recommended for you
+                                  <span className="section-tag">Based on your preferences</span>
                                 </h2>
-                                <button className="section-view-all">View all</button>
+                                <button className="section-view-all" onClick={() => setCourse("main")}>View all</button>
                               </div>
                               <div className="recipe-grid">
-                                {results.slice(3, 6).map(r => (
+                                {results.slice(0, 3).map(r => (
                                   <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
                                     isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
                                     onAddToMealPlan={onAddToMealPlan} />
                                 ))}
                               </div>
                             </div>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <h2 className="section-heading">
-                            {searched
-                              ? mode === "ingredients" ? "Exact matches" : "Search results"
-                              : cuisine || course ? "Filtered recipes" : "All recipes"}
-                            <span className="count">{totalCount} recipes</span>
-                          </h2>
+                            {results.length > 3 && (
+                              <div className="recipe-section">
+                                <div className="section-head-row">
+                                  <h2 className="section-heading">
+                                    Trending this week
+                                    <span className="section-tag">Popular with our community</span>
+                                  </h2>
+                                  <button className="section-view-all">View all</button>
+                                </div>
+                                <div className="recipe-grid">
+                                  {results.slice(3, 6).map(r => (
+                                    <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                                      isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                                      onAddToMealPlan={onAddToMealPlan} />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <h2 className="section-heading">
+                              {searched ? (mode === "ingredients" ? "Exact matches" : "Search results") : cuisine || course ? "Filtered recipes" : "All recipes"}
+                              <span className="count">{totalCount} recipes</span>
+                            </h2>
+                            <div className="recipe-grid">
+                              {results.map(r => (
+                                <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
+                                  matchCount={mode === "ingredients" ? r.match_count : null}
+                                  requestedCount={mode === "ingredients" ? r.requested_count : null}
+                                  isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
+                                  onAddToMealPlan={onAddToMealPlan} />
+                              ))}
+                            </div>
+                          </>
+                        )
+                      )}
+
+                      {mode === "ingredients" && searched && partials.length > 0 && (
+                        <div style={{ marginTop: "2.5rem" }}>
+                          <h2 className="section-heading">You might also like <span className="count">partial matches</span></h2>
                           <div className="recipe-grid">
-                            {results.map(r => (
+                            {partials.map(r => (
                               <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
-                                matchCount={mode === "ingredients" ? r.match_count : null}
-                                requestedCount={mode === "ingredients" ? r.requested_count : null}
+                                matchCount={r.match_count} requestedCount={r.requested_count}
                                 isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
                                 onAddToMealPlan={onAddToMealPlan} />
                             ))}
                           </div>
-                        </>
-                      )
-                    )}
-
-                    {mode === "ingredients" && searched && partials.length > 0 && (
-                      <div style={{ marginTop: "2.5rem" }}>
-                        <h2 className="section-heading">You might also like <span className="count">partial matches</span></h2>
-                        <div className="recipe-grid">
-                          {partials.map(r => (
-                            <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)}
-                              matchCount={r.match_count} requestedCount={r.requested_count}
-                              isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin}
-                              onAddToMealPlan={onAddToMealPlan} />
-                          ))}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {!loading && searched && results.length === 0 && aiResults.length === 0 && (
-                      <div className="state-center">
-                        <div className="emoji">🍽️</div>
-                        <h3>No recipes found</h3>
-                        <p>{mode === "ingredients"
-                          ? "Try adding different ingredients, or use fewer to broaden your search."
-                          : "Try a different dish name, or browse all recipes by clearing your search."}</p>
-                        <button className="search-btn"
-                          style={{ marginTop: "1.5rem", display: "inline-block", width: "auto", padding: ".65rem 1.75rem" }}
-                          onClick={() => { setSearched(false); setResults([]); setQuery(""); setPills([]); loadBrowse(); }}>
-                          Browse all recipes
-                        </button>
-                      </div>
-                    )}
+                      {!loading && searched && results.length === 0 && aiResults.length === 0 && (
+                        <div className="state-center">
+                          <div className="emoji">🍽️</div>
+                          <h3>No recipes found</h3>
+                          <p>{mode === "ingredients" ? "Try different ingredients or fewer to broaden your search." : "Try a different dish name."}</p>
+                          <button className="search-btn"
+                            style={{ marginTop: "1.5rem", display: "inline-block", width: "auto", padding: ".65rem 1.75rem" }}
+                            onClick={() => { setSearched(false); setResults([]); setQuery(""); setPills([]); loadBrowse(); }}>
+                            Browse all recipes
+                          </button>
+                        </div>
+                      )}
 
-                    {!searched && totalPages > 1 && (
-                      <div className="pagination">
-                        <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                        <span className="page-info">Page {page} of {totalPages}</span>
-                        <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
+                      {!searched && totalPages > 1 && (
+                        <div className="pagination">
+                          <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                          <span className="page-info">Page {page} of {totalPages}</span>
+                          <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
+          </div>{/* end view-fade */}
         </main>
       </div>
 
@@ -1050,13 +1032,13 @@ export default function Home({
         <button className={`bottom-nav-item${view === "explore" ? " active" : ""}`} onClick={() => handleSidebarNavigate("explore")}>
           <span>🔍</span>Explore
         </button>
-        <button className="bottom-nav-item" onClick={user ? onMealPlan : onLogin}>
-          <span>📅</span>Meal Plan
+        <button className={`bottom-nav-item${view === "mealplan" ? " active" : ""}`} onClick={() => handleSidebarNavigate("mealplan")}>
+          <span>📅</span>Meals
         </button>
         <button className={`bottom-nav-item${view === "favorites" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("favorites") : onLogin}>
-          <span>❤️</span>Saved
+          <span>❤️</span>Liked
         </button>
-        <button className="bottom-nav-item" onClick={user ? onProfile : onLogin}>
+        <button className={`bottom-nav-item${view === "profile" ? " active" : ""}`} onClick={user ? () => handleSidebarNavigate("profile") : onLogin}>
           <span>👤</span>Profile
         </button>
       </nav>

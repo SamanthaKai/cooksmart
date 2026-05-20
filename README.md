@@ -36,36 +36,6 @@ A modern, AI-powered recipe discovery app specialising in authentic African and 
 - Python 3.8+
 - PostgreSQL
 
-### Local Development
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/cooksmart.git
-   cd cooksmart
-   ```
-
-2. **Backend Setup**
-   ```bash
-   cd backend
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   pip install -r requirements.txt
-   # Set up your .env file with database credentials
-   python seed.py  # Load recipes
-   python app.py   # Start backend on port 5000
-   ```
-
-3. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev  # Start dev server on port 3000
-   ```
-
-4. **Open your browser**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-
 ## 📁 Project Structure
 
 ```

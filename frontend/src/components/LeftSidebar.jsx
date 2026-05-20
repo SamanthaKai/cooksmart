@@ -26,14 +26,12 @@ const NAV_ITEMS = [
   { id: "profile",    label: "My Profile",     Icon: User,       requireAuth: true },
 ];
 
-export default function LeftSidebar({ user, onLogin, onMealPlan, onProfile, activePage, onNavigate, onCategorySelect }) {
+export default function LeftSidebar({ user, onLogin, activePage, onNavigate, onCategorySelect }) {
   const [catOpen, setCatOpen]     = useState(false);
   const [premToast, setPremToast] = useState(false);
 
   function handleNav(item) {
     if (item.requireAuth && !user) { onLogin(); return; }
-    if (item.id === "mealplan")   { onMealPlan(); return; }
-    if (item.id === "profile")    { onProfile();  return; }
     if (item.id === "categories") { setCatOpen(o => !o); return; }
     onNavigate(item.id);
   }
