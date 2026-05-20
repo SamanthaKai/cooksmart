@@ -1,93 +1,68 @@
-# 🍽️ CookSmart
+# CookSmart – AI-Powered African Recipe Recommendation
 
-A modern, AI-powered recipe discovery app specialising in authentic African and Ugandan cuisine. Search by ingredients, explore dishes, and discover new recipes with smart AI suggestions — all rooted in African culinary traditions.
+**Live demo:** [https://cooksmart-seven.vercel.app](https://cooksmart-seven.vercel.app)
 
-## ✨ Features
+## Problem
 
-- **Smart Ingredient Search**: Add ingredients and get AI-powered recipe suggestions rooted in African cuisine
-- **Cuisine Exploration**: Browse authentic African and Ugandan recipes
-- **Recipe Details**: Full recipes with ingredients, instructions, and serving suggestions
-- **Scoped AI**: The AI only generates African and Ugandan recipes — non-food or out-of-scope requests are caught early with helpful guidance
-- **Responsive Design**: Beautiful, mobile-friendly interface
-- **Fast Search**: Fuzzy search with autocomplete
-- **Image Gallery**: High-quality food photography
+Mainstream recipe platforms are Western-biased and fail for African dishes (e.g., *luwombo*, *matoke*). No open, structured dataset exists for African cuisine.
 
-## 🛠️ Tech Stack
+## Solution
 
-### Frontend
-- **React 18** with Vite
-- **Modern CSS** with custom properties
-- **Responsive design** for all devices
+CookSmart is a production LLM‑augmented recommendation system for African recipes.  
+It combines a **curated structured dataset** + **retrieval** + **LLM reasoning** (LLaMA 3.1).
 
-### Backend
-- **Flask** REST API
-- **PostgreSQL** database
-- **Anthropic Claude** for AI suggestions
-- **psycopg2** for database connections
+## System Architecture
 
-### Deployment
-- **Vercel** (Frontend)
-- **Render** (Backend + Database)
+| Layer          | Technology |
+|----------------|-------------|
+| Frontend       | React       |
+| Backend API    | Python (Flask) |
+| Database       | PostgreSQL  |
+| LLM inference  | LLaMA 3.1 (Groq) |
+| Prompt refinement | Claude |
 
-## 🚀 Quick Start
+**Flow:**  
+`User query → Retrieval (PostgreSQL) → Prompt engineering → LLaMA 3.1 → Claude-assisted formatting → Response`
 
-### Prerequisites
-- Node.js 18+
-- Python 3.8+
-- PostgreSQL
+## Dataset (critical contribution)
 
-## 📁 Project Structure
+- **71 structured African recipes** – manually curated
+- No existing clean dataset → built from aggregation + normalization
+- Unified schema: ingredients, steps, measurements
 
-```
-cooksmart/
-├── backend/                 # Flask API
-│   ├── app.py              # Main application
-│   ├── db.py               # Database connection
-│   ├── seed.py             # Data seeding script
-│   ├── routes/             # API endpoints
-│   └── db/schema.sql       # Database schema
-├── frontend/                # React app
-│   ├── src/
-│   │   ├── components/     # Reusable components
-│   │   ├── pages/          # Page components
-│   │   ├── api/            # API client
-│   │   └── utils/          # Helper functions
-│   └── public/images/      # Recipe images
-├── data/                   # CSV data files
-└── DEPLOYMENT.md           # Deployment guide
-```
+## Key Engineering Trade‑offs
 
-## 🎨 Design
+| Challenge | Decision | Rationale |
+|-----------|----------|-----------|
+| No dataset | Manual curation | Most time‑intensive, but unavoidable |
+| Custom model vs. LLM | LLM‑augmented (no training) | Compute constraints + faster iteration |
+| Prompt unreliability | Claude‑assisted prompt layer | Consistency + cultural relevance |
 
-- **Color Palette**: Earthy greens and warm neutrals
-- **Typography**: DM Sans for modern, clean text
-- **Icons**: Custom emoji-based iconography
-- **Layout**: Card-based design with smooth animations
+## Outcome
 
-## 📊 Database Schema
-
-- **recipes**: Core recipe data
-- **ingredients**: Normalized ingredient catalog
-- **recipe_ingredients**: Recipe-ingredient relationships
-- **tags**: Categorization and filtering tags
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-
-## 🙏 Acknowledgments
-
-- Recipe data sourced from various African culinary traditions
-- Images from Unsplash and local photographers
-- Special thanks to the African culinary community
+- **3 months**, team of 5 → production system
+- Working architecture: domain dataset + retrieval + LLM reasoning + lightweight full‑stack
 
 ---
 
-**Made with ❤️ for lovers of African and Ugandan food**
+## Run locally (optional)
+bash
+# backend
+cd backend
+pip install -r requirements.txt
+python app.py
 
-> **AI Scope Note:** CookSmart's AI is trained on African and Ugandan cuisine. Requests for non-African dishes (e.g. pizza, sushi, pasta) will receive a friendly redirect to the nearest African equivalent. Inputs with no recognisable food context will prompt the user for clarification rather than generating a recipe.
+# frontend
+cd frontend
+npm install
+npm start
+
+## Repo structure
+
+/
+├── backend/       # Flask API + PostgreSQL client
+├── frontend/      # React app
+├── data/          # Curated recipe dataset (JSON/CSV)
+└── prompts/       # Prompt templates + Claude refinement
+
+

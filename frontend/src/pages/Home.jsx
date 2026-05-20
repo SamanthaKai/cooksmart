@@ -9,6 +9,7 @@ import { useLang } from "../context/LanguageContext";
 import {
   LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater,
   Bell, ChevronDown, SlidersHorizontal, X as XIcon, Plus, Trash2,
+  Search, ShoppingBasket, Sparkles, User,
 } from "lucide-react";
 
 const CATEGORY_FILTERS = [
@@ -22,7 +23,7 @@ const CATEGORY_FILTERS = [
 ];
 
 function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
-                     onIngChange, onKeyDown, onFocus, onSuggestPick, onRemovePill }) {
+                     onIngChange, onKeyDown, onFocus, onSuggestPick, onRemovePill, inputRef }) {
   return (
     <div className="ing-wrap" ref={ingRef}>
       <div className="ing-pills">
@@ -33,6 +34,7 @@ function PillInput({ pills, ingInput, ingRef, ingSuggest, showIngSug, hint,
           </span>
         ))}
         <input
+          ref={inputRef}
           className="ing-input"
           placeholder={pills.length === 0 ? "Add at least 2 ingredients…" : "Add another…"}
           value={ingInput}
@@ -138,8 +140,10 @@ export default function Home({
   });
   const [shoppingInput, setShoppingInput] = useState("");
 
-  const suggestRef = useRef(null);
-  const ingRef     = useRef(null);
+  const suggestRef   = useRef(null);
+  const ingRef       = useRef(null);
+  const nameInputRef = useRef(null);
+  const ingInputRef  = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('cs_shopping', JSON.stringify(shoppingItems));
@@ -396,6 +400,27 @@ export default function Home({
 
   function clearCheckedItems() {
     setShoppingItems(prev => prev.filter(item => !item.checked));
+  }
+
+  function handleCardSearchName() {
+    if (mode !== "name") switchMode("name");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => nameInputRef.current?.focus(), 300);
+  }
+
+  function handleCardSearchIngredients() {
+    if (mode !== "ingredients") switchMode("ingredients");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => ingInputRef.current?.focus(), 300);
+  }
+
+  function handleCardGenerateAI() {
+    if (!genOpen) setGenOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleCardProfile() {
+    handleSidebarNavigate("profile");
   }
 
   const emoji = (r) => {
@@ -671,6 +696,7 @@ export default function Home({
                           </svg>
                         </span>
                         <input
+                          ref={nameInputRef}
                           className="search-input"
                           placeholder={t("search_placeholder")}
                           value={query}
@@ -697,6 +723,7 @@ export default function Home({
                           ingSuggest={ingSuggest} showIngSug={showIngSug} hint={pillHint}
                           onIngChange={handleIngChange} onKeyDown={handleIngKeyDown}
                           onFocus={handleIngFocus} onSuggestPick={addPill} onRemovePill={handleRemovePill}
+                          inputRef={ingInputRef}
                         />
                         <button type="button" className="search-mode-btn search-mode-btn--close" onClick={() => switchMode("name")}>
                           <XIcon size={15} strokeWidth={2} />
@@ -756,6 +783,36 @@ export default function Home({
                     )}
                   </div>
                 </div>
+
+                {/* ── Feature Grid — home view only ── */}
+                {view === "home" && (
+                  <section className="feature-grid-section">
+                    <h2 className="feature-grid-title">Start cooking in seconds</h2>
+                    <p className="feature-grid-subtitle">Everything you need to discover, plan and cook great food.</p>
+                    <div className="feature-grid">
+                      <div className="feature-card" onClick={handleCardSearchName} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleCardSearchName()}>
+                        <div className="feature-card-icon"><Search size={24} strokeWidth={2} /></div>
+                        <div className="feature-card-title">Search by Recipe Name</div>
+                        <div className="feature-card-desc">Find dishes like Jollof Rice, Matoke, or Fried Rice instantly.</div>
+                      </div>
+                      <div className="feature-card" onClick={handleCardSearchIngredients} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleCardSearchIngredients()}>
+                        <div className="feature-card-icon"><ShoppingBasket size={24} strokeWidth={2} /></div>
+                        <div className="feature-card-title">Search by Ingredients</div>
+                        <div className="feature-card-desc">Type what you have — get recipes you can actually cook.</div>
+                      </div>
+                      <div className="feature-card" onClick={handleCardGenerateAI} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleCardGenerateAI()}>
+                        <div className="feature-card-icon"><Sparkles size={24} strokeWidth={2} /></div>
+                        <div className="feature-card-title">Generate a Recipe with AI</div>
+                        <div className="feature-card-desc">No idea what to cook? Let AI create something just for you.</div>
+                      </div>
+                      <div className="feature-card" onClick={handleCardProfile} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleCardProfile()}>
+                        <div className="feature-card-icon"><User size={24} strokeWidth={2} /></div>
+                        <div className="feature-card-title">Your Personalised Profile</div>
+                        <div className="feature-card-desc">Save preferences, dietary needs, and your favourite meals.</div>
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 {/* ── Content area ── */}
                 <div className="home-content">
