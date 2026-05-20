@@ -2577,28 +2577,29 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
 }
 .category-pills {
   display: flex;
-  gap: .75rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
+  padding: .25rem 0;
 }
 .category-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .5rem;
-  padding: .35rem .5rem;
+  gap: .6rem;
+  padding: .4rem .6rem;
   border: none;
   background: transparent;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
-  font-size: .75rem;
+  font-size: .77rem;
   font-weight: 500;
   color: var(--charcoal);
   transition: color .15s;
-  min-width: 72px;
+  min-width: 80px;
 }
 .category-pill-icon-wrap {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: #EDE8DF;
   display: flex;

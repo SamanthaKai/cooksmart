@@ -115,42 +115,23 @@ export default function App() {
     );
   }
 
-  const onRecipePage = page === "recipe" && !!currentRecipeId;
-
   return (
     <>
-      {/* Home stays mounted so scroll position + search results are preserved on back */}
-      <div style={{ display: onRecipePage ? "none" : undefined }}>
-        <Home
-          onSelectRecipe={handleSelectRecipe}
-          user={user}
-          onLogout={handleLogout}
-          onLogin={() => setPage("login")}
-          onUserUpdate={updatedUser => setUser(updatedUser)}
-          savedIds={savedIds}
-          likedIds={likedIds}
-          onToggleSave={handleToggleSave}
-          onToggleLike={handleToggleLike}
-          onRequestLogin={requestLogin}
-          onAddToMealPlan={handleAddToMealPlan}
-        />
-      </div>
-
-      {onRecipePage && (
-        <div className="app">
-          <RecipeDetail
-            recipeId={currentRecipeId}
-            onBack={() => { setPage("home"); window.scrollTo(0, 0); }}
-            onSelectRecipe={handleSelectRecipe}
-            savedIds={savedIds}
-            likedIds={likedIds}
-            onToggleSave={handleToggleSave}
-            onToggleLike={handleToggleLike}
-            onRequestLogin={requestLogin}
-            onAddToMealPlan={handleAddToMealPlan}
-          />
-        </div>
-      )}
+      <Home
+        onSelectRecipe={handleSelectRecipe}
+        user={user}
+        onLogout={handleLogout}
+        onLogin={() => setPage("login")}
+        onUserUpdate={updatedUser => setUser(updatedUser)}
+        savedIds={savedIds}
+        likedIds={likedIds}
+        onToggleSave={handleToggleSave}
+        onToggleLike={handleToggleLike}
+        onRequestLogin={requestLogin}
+        onAddToMealPlan={handleAddToMealPlan}
+        currentRecipeId={currentRecipeId}
+        onClearRecipe={() => { setCurrentRecipeId(null); setPage("home"); }}
+      />
 
       <Footer />
 

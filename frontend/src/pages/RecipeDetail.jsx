@@ -86,7 +86,7 @@ function RecipeImage({ recipe, fallbackEmoji }) {
 }
 const DAYS_DETAIL = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin, onAddToMealPlan }) {
+export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin, onAddToMealPlan, isEmbedded = false }) {
   const [recipe, setRecipe]           = useState(null);
   const [recos,  setRecos]            = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -308,34 +308,17 @@ const steps = (recipe.instructions || "")
     .filter(s => s.length > 4);
     
   return (
-    <div className="app">
-      <nav className="navbar">
-        <span className="navbar-brand">Cook<span>Smart</span></span>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{ display: "inline-flex", border: "1.5px solid var(--border)", borderRadius: 99, overflow: "hidden" }}>
-            {["en", "lg"].map(code => (
-              <button
-                key={code}
-                onClick={() => lang !== code && toggleLang()}
-                style={{
-                  padding: "3px 9px", border: "none", cursor: "pointer",
-                  fontFamily: "inherit", fontSize: ".72rem", fontWeight: 700,
-                  letterSpacing: ".04em", transition: "all .15s",
-                  background: lang === code ? "var(--earth)" : "transparent",
-                  color:      lang === code ? "var(--white)" : "var(--stone)",
-                }}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
+    <div className={isEmbedded ? "" : "app"}>
+      {!isEmbedded && (
+        <nav className="navbar">
+          <span className="navbar-brand">Cook<span>Smart</span></span>
           <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>
             {recipe.cuisine_type === "african" ? "🌍 African cuisine" : "🍴 Western cuisine"}
           </span>
-        </div>
-      </nav>
+        </nav>
+      )}
 
-      <div className="detail-page">
+      <div className={isEmbedded ? "detail-page detail-page--embedded" : "detail-page"}>
         <button className="back-btn" onClick={onBack}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M19 12H5M12 5l-7 7 7 7"/>

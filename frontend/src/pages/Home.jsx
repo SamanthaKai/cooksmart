@@ -4,6 +4,7 @@ import RecipeCard from "../components/RecipeCard";
 import LeftSidebar from "../components/LeftSidebar";
 import ProfilePage from "./ProfilePage";
 import MealPlanPage from "./MealPlanPage";
+import RecipeDetail from "./RecipeDetail";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater,
@@ -76,6 +77,7 @@ function SkeletonGrid({ count = 8 }) {
 export default function Home({
   onSelectRecipe, user, onLogout, onLogin, onUserUpdate,
   savedIds, likedIds, onToggleSave, onToggleLike, onRequestLogin, onAddToMealPlan,
+  currentRecipeId, onClearRecipe,
 }) {
   const { t } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -486,8 +488,28 @@ export default function Home({
         />
 
         <main className="home-main">
+          {/* ════ RECIPE DETAIL — shown over any view ════ */}
+          {currentRecipeId && (
+            <div key={`recipe-${currentRecipeId}`} className="view-fade">
+              <div className="home-content" style={{ paddingTop: "1.5rem" }}>
+                <RecipeDetail
+                  isEmbedded
+                  recipeId={currentRecipeId}
+                  onBack={() => { onClearRecipe(); window.scrollTo(0, 0); }}
+                  onSelectRecipe={onSelectRecipe}
+                  savedIds={savedIds}
+                  likedIds={likedIds}
+                  onToggleSave={onToggleSave}
+                  onToggleLike={onToggleLike}
+                  onRequestLogin={onRequestLogin}
+                  onAddToMealPlan={onAddToMealPlan}
+                />
+              </div>
+            </div>
+          )}
+
           {/* fade wrapper — key forces re-mount → animation fires on every view change */}
-          <div key={view} className="view-fade">
+          {!currentRecipeId && <div key={view} className="view-fade">
 
             {/* ════ MY RECIPES ════ */}
             {view === "myrecipes" && (
@@ -1020,7 +1042,7 @@ export default function Home({
               </>
             )}
 
-          </div>{/* end view-fade */}
+          </div>}{/* end view-fade */}
         </main>
       </div>
 
