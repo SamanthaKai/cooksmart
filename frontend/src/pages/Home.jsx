@@ -661,8 +661,8 @@ export default function Home({
           {user ? (
             <>
               <p className="mobile-menu-greeting">Hi, {user.name.split(" ")[0]}</p>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("mealplan"); setMenuOpen(false); }}>Meal Planner</button>
-              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("profile"); setMenuOpen(false); }}>My Profile</button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("favorites"); setMenuOpen(false); }}>Favorites</button>
+              <button className="mobile-menu-btn mobile-menu-btn--secondary" onClick={() => { handleSidebarNavigate("myrecipes"); setMenuOpen(false); }}>Saved Recipes</button>
               <button className="mobile-menu-btn mobile-menu-btn--ghost" onClick={() => { onLogout(); setMenuOpen(false); }}>{t("nav_signout")}</button>
             </>
           ) : (
@@ -896,18 +896,18 @@ export default function Home({
                   </h2>
                   <p className="view-section-sub">Your grocery items</p>
                 </div>
-                <div className="shopping-add-row">
+                <form className="shopping-add-row" onSubmit={e => { e.preventDefault(); addShoppingItem(); }}>
                   <input
                     className="shopping-add-input"
                     placeholder="Add an item…"
                     value={shoppingInput}
                     onChange={e => setShoppingInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && addShoppingItem()}
+                    autoComplete="off"
                   />
-                  <button className="shopping-add-btn" onClick={addShoppingItem}>
+                  <button type="submit" className="shopping-add-btn">
                     <Plus size={16} strokeWidth={2} /> Add
                   </button>
-                </div>
+                </form>
                 {shoppingItems.length === 0 ? (
                   <div className="state-center" style={{ paddingTop: "3rem" }}>
                     <ShoppingCart size={40} strokeWidth={1.3} style={{ color: "var(--stone)", marginBottom: "1rem" }} />
@@ -921,7 +921,7 @@ export default function Home({
                         <label key={item.id} className="shopping-item-row">
                           <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} className="shopping-item-check" />
                           <span className={`shopping-item-name${item.checked ? " checked" : ""}`}>{item.name}</span>
-                          <button className="shopping-item-delete" onClick={() => removeShoppingItem(item.id)} title="Remove">
+                          <button type="button" className="shopping-item-delete" onClick={e => { e.preventDefault(); removeShoppingItem(item.id); }} title="Remove">
                             <Trash2 size={14} strokeWidth={1.8} />
                           </button>
                         </label>
