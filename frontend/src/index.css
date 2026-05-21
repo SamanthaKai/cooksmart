@@ -3649,6 +3649,32 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; }
    ANIMATIONS & INTERACTIVITY
    ════════════════════════════════════════ */
 
+/* ── Auth toast ── */
+@keyframes cs-toast {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  72%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+.auth-toast {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--charcoal);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  padding: .55rem 1.25rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(0,0,0,.18);
+  animation: cs-toast 2.8s ease forwards;
+  z-index: 9999;
+  pointer-events: none;
+}
+
 /* ── Keyframes ── */
 @keyframes cs-fade-up {
   from { opacity: 0; transform: translateY(12px); }

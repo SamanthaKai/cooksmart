@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Home from "./pages/Home";
 import RecipeDetail from "./pages/RecipeDetail";
 import LoginPage from "./pages/LoginPage";
@@ -18,6 +18,8 @@ export default function App() {
   const [savedIds, setSavedIds] = useState(new Set());
   const [likedIds, setLikedIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
 
   const loadInteractions = useCallback(async () => {
     try {
@@ -40,11 +42,18 @@ export default function App() {
       .finally(() => setAuthLoading(false));
   }, [loadInteractions]);
 
+  function showToast(msg) {
+    clearTimeout(toastTimer.current);
+    setToast({ msg, key: Date.now() });
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  }
+
   function handleLogin(loggedInUser) {
     setUser(loggedInUser);
     setShowLoginModal(false);
     setPage(prev => prev === "login" ? "home" : prev);
     loadInteractions();
+    showToast(`Welcome back, ${loggedInUser.name.split(" ")[0]}!`);
   }
 
   function handleLogout() {
@@ -54,6 +63,7 @@ export default function App() {
     setLikedIds(new Set());
     setPage("home");
     setCurrentRecipeId(null);
+    showToast("Signed out");
   }
 
   function handleSelectRecipe(id) {
@@ -134,6 +144,11 @@ export default function App() {
       />
 
       <Footer />
+
+      {/* ── Auth toast ── */}
+      {toast && (
+        <div key={toast.key} className="auth-toast">{toast.msg}</div>
+      )}
 
       {/* ── Login modal — shown when guest taps save/like ── */}
       {showLoginModal && (
