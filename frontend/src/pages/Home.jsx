@@ -1097,7 +1097,7 @@ export default function Home({
                         <div className="feature-card-title">Search by Ingredients</div>
                         <div className="feature-card-desc">Type what you have — get recipes you can actually cook.</div>
                       </div>
-                      <div className="feature-card" onClick={() => handleSidebarNavigate("airecipes")} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleSidebarNavigate("airecipes")}>
+                      <div className="feature-card" onClick={() => { setGenOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }} role="button" tabIndex={0} onKeyDown={e => { if (e.key === "Enter") { setGenOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); } }}>
                         <div className="feature-card-icon"><Sparkles size={24} strokeWidth={2} /></div>
                         <div className="feature-card-title">Generate a Recipe with AI</div>
                         <div className="feature-card-desc">No idea what to cook? Let AI create something just for you.</div>
