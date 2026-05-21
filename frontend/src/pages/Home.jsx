@@ -8,7 +8,7 @@ import RecipeDetail from "./RecipeDetail";
 import { useLang } from "../context/LanguageContext";
 import {
   LayoutGrid, Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater,
-  Bell, ChevronDown, X as XIcon, Plus, Trash2,
+  Bell, ChevronDown, ChevronUp, X as XIcon, Plus, Trash2,
   Search, ShoppingBasket, Sparkles, User,
   Home as HomeIcon, CalendarDays, Heart, Bookmark, ShoppingCart,
   Clock, Users, Leaf, Info,
@@ -125,10 +125,17 @@ export default function Home({
 
   const [genRecipe, setGenRecipe]   = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [genOpen, setGenOpen]       = useState(false);
 
   const [genText, setGenText]       = useState("");
   const [genPills, setGenPills]     = useState([]);
   const [genLoading, setGenLoading] = useState(false);
+
+  // ── AI Recipes history ────────────────────────────────────────────────────
+  const [aiHistory, setAiHistory]         = useState([]);
+  const [aiHistoryLoading, setAiHistoryLoading] = useState(false);
+  const [aiExpandedId, setAiExpandedId]   = useState(null);
+  const [aiDeletingId, setAiDeletingId]   = useState(null);
 
   const [genCount, setGenCount]         = useState(() => parseInt(localStorage.getItem('cs_gen_count') || '0', 10));
   const [genLimitHit, setGenLimitHit]   = useState(false);
@@ -181,6 +188,12 @@ export default function Home({
         .then(d => setViewRecipes(d.recipes || []))
         .catch(() => setViewRecipes([]))
         .finally(() => setViewLoading(false));
+    } else if (view === "airecipes" && user) {
+      setAiHistoryLoading(true);
+      api.getGeneratedRecipes()
+        .then(d => setAiHistory(d.recipes || []))
+        .catch(() => setAiHistory([]))
+        .finally(() => setAiHistoryLoading(false));
     }
   }, [view, user]);
 
@@ -306,7 +319,8 @@ export default function Home({
       const data = await api.aiGenerate(ingredients, context);
       if (data.clarify) { setGenClarifyMsg(data.message); return; }
       setGenRecipe(data.recipe);
-      setView("airecipes");
+      setGenOpen(false);
+      setView("explore");
       if (!user) {
         const next = genCount + 1;
         setGenCount(next);
@@ -338,6 +352,16 @@ export default function Home({
     } finally {
       setGenSectionSaving(prev => { const a = [...prev]; a[idx] = false; return a; });
     }
+  }
+
+  async function handleDeleteAiRecipe(id) {
+    setAiDeletingId(id);
+    try {
+      await api.deleteGeneratedRecipe(id);
+      setAiHistory(prev => prev.filter(r => r.id !== id));
+      if (aiExpandedId === id) setAiExpandedId(null);
+    } catch {}
+    finally { setAiDeletingId(null); }
   }
 
   const addPill = useCallback((name) => {
@@ -386,11 +410,13 @@ export default function Home({
       setView("home");
       setSearched(false); setCuisine(""); setCourse("");
       setMode("name"); setQuery(""); setPills([]);
+      setGenOpen(false); setGenRecipe(null);
     } else if (id === "explore") {
       setView("explore");
       setSearched(false); setQuery("");
     } else if (id === "airecipes") {
       setView("airecipes");
+      setAiExpandedId(null);
     } else if (id === "mealplan") {
       if (!user) { onRequestLogin(); return; }
       setView("mealplan");
@@ -679,7 +705,7 @@ export default function Home({
 
           {!currentRecipeId && <div key={view} className="view-fade">
 
-            {/* ════ AI RECIPES ════ */}
+            {/* ════ AI RECIPES — history of saved generated recipes ════ */}
             {view === "airecipes" && (
               <div className="home-content">
                 <div className="view-section-head">
@@ -687,90 +713,101 @@ export default function Home({
                     <Sparkles size={20} strokeWidth={1.8} style={{ color: "var(--earth)" }} />
                     AI Recipes
                   </h2>
-                  <p className="view-section-sub">Describe what you have — AI will create a recipe for you</p>
+                  <p className="view-section-sub">Recipes you created with CookSmart AI</p>
                 </div>
 
-                {genLimitHit ? (
-                  <div className="airecipes-limit-box">
-                    <Sparkles size={28} strokeWidth={1.3} style={{ color: "var(--earth)", marginBottom: ".75rem" }} />
-                    <p>You've used your 2 guest tries. Sign in to generate more recipes.</p>
-                    <div style={{ display: "flex", gap: ".75rem", justifyContent: "center", flexWrap: "wrap", marginTop: "1.25rem" }}>
-                      <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
-                      <button
-                        style={{ padding: ".5rem 1rem", background: "none", border: "1.5px solid var(--border)", borderRadius: 99, cursor: "pointer", fontSize: ".88rem", color: "var(--stone)" }}
-                        onClick={() => setGenLimitHit(false)}
-                      >
-                        Maybe later
-                      </button>
-                    </div>
+                {!user ? (
+                  <GuestGateView
+                    message="Sign in to save and view your AI-generated recipes."
+                    onSignIn={onLogin}
+                  />
+                ) : aiHistoryLoading ? (
+                  <div className="state-center"><div className="spinner" /></div>
+                ) : aiHistory.length === 0 ? (
+                  <div className="state-center">
+                    <Sparkles size={40} strokeWidth={1.3} style={{ color: "var(--stone)", marginBottom: "1rem" }} />
+                    <h3>No AI recipes saved yet</h3>
+                    <p>Use CookSmart AI from the home page to generate your first recipe, then save it here.</p>
+                    <button className="search-btn" style={{ marginTop: "1.5rem", width: "auto", padding: ".65rem 1.75rem" }}
+                      onClick={() => handleSidebarNavigate("home")}>
+                      Go to Home
+                    </button>
                   </div>
                 ) : (
-                  <div className="airecipes-gen-wrap">
-                    {!user && (
-                      <div className="gen-guest-info">
-                        <Info size={14} strokeWidth={1.8} />
-                        <span>
-                          {genCount === 0
-                            ? "2 free recipe generations available. Sign in for unlimited."
-                            : "1 free generation left. Sign in for unlimited."}
-                        </span>
-                      </div>
-                    )}
-                    <textarea
-                      className="airecipes-textarea"
-                      placeholder='e.g. "I have chicken, tomatoes and some garlic at home"'
-                      value={genText}
-                      onChange={e => setGenText(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
-                      rows={4}
-                    />
-                    {error && <div className="error-banner" style={{ marginTop: ".5rem" }}>{error}</div>}
-                    {genClarifyMsg && (
-                      <div className="gen-clarify-box" style={{ marginTop: ".75rem" }}>
-                        <span className="gen-clarify-icon"><UtensilsCrossed size={18} strokeWidth={1.8} /></span>
-                        <p>{genClarifyMsg}</p>
-                      </div>
-                    )}
-                    <div className="airecipes-actions">
-                      <button
-                        className="search-btn"
-                        style={{ marginTop: ".75rem", padding: ".75rem 2rem" }}
-                        onClick={handleGenerate}
-                        disabled={genLoading || generating || (!genText.trim() && !genPills.length)}
-                      >
-                        {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
-                      </button>
-                      {genRecipe && (
-                        <button
-                          style={{ marginTop: ".75rem", padding: ".75rem 1.25rem", background: "none", border: "1.5px solid var(--border)", borderRadius: 99, cursor: "pointer", fontSize: ".88rem", color: "var(--stone)" }}
-                          onClick={() => { setGenRecipe(null); setGenText(""); setGenPills([]); setGenClarifyMsg(""); setError(""); setGenSaved(false); setGenSectionSaved([]); }}
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
+                  <div className="ai-history-list">
+                    {aiHistory.map(r => {
+                      const isOpen = aiExpandedId === r.id;
+                      const ings   = Array.isArray(r.ingredients) ? r.ingredients : [];
+                      const steps  = Array.isArray(r.steps)       ? r.steps       : [];
+                      return (
+                        <div key={r.id} className={`ai-history-row${isOpen ? " ai-history-row--open" : ""}`}>
+                          <button
+                            className="ai-history-header"
+                            onClick={() => setAiExpandedId(isOpen ? null : r.id)}
+                          >
+                            <div className="ai-history-info">
+                              <span className="ai-history-name">{r.dish_name}</span>
+                              {r.local_name && <span className="ai-history-local">{r.local_name}</span>}
+                              <div className="ai-history-meta">
+                                {r.cuisine      && <span className="meta-chip cuisine" style={{ fontSize: ".72rem" }}>{r.cuisine}</span>}
+                                {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".72rem", display: "inline-flex", alignItems: "center", gap: "3px" }}><Clock size={10} strokeWidth={2} />{r.cooking_time}</span>}
+                                {r.servings     && <span className="meta-chip" style={{ fontSize: ".72rem", display: "inline-flex", alignItems: "center", gap: "3px" }}><Users size={10} strokeWidth={2} />{r.servings}</span>}
+                              </div>
+                            </div>
+                            <div className="ai-history-actions">
+                              <button
+                                className="ai-history-delete"
+                                onClick={e => { e.stopPropagation(); handleDeleteAiRecipe(r.id); }}
+                                disabled={aiDeletingId === r.id}
+                                title="Delete"
+                                aria-label="Delete recipe"
+                              >
+                                <Trash2 size={14} strokeWidth={1.8} />
+                              </button>
+                              {isOpen
+                                ? <ChevronUp size={15} strokeWidth={2} style={{ color: "var(--stone)", flexShrink: 0 }} />
+                                : <ChevronDown size={15} strokeWidth={2} style={{ color: "var(--stone)", flexShrink: 0 }} />}
+                            </div>
+                          </button>
 
-                {generating && (
-                  <div className="gen-loading" style={{ marginTop: "2rem" }}>
-                    <div className="spinner" style={{ margin: "0 auto 1rem" }} />
-                    <p>CookSmart AI is creating your recipe…</p>
+                          {isOpen && (
+                            <div className="ai-history-body">
+                              {r.description && <p className="ai-history-desc">{r.description}</p>}
+                              {ings.length > 0 && (
+                                <div className="ai-history-section">
+                                  <h4 className="ai-history-section-title">Ingredients</h4>
+                                  <ul className="gen-ing-list">
+                                    {ings.map((ing, i) => (
+                                      <li key={i} className="gen-ing-item">
+                                        <span className="gen-ing-name">{ing.item}</span>
+                                        {ing.quantity && <span className="gen-ing-qty">{ing.quantity}</span>}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {steps.length > 0 && (
+                                <div className="ai-history-section">
+                                  <h4 className="ai-history-section-title">Steps</h4>
+                                  <ol className="gen-steps">
+                                    {steps.map((step, i) => (
+                                      <li key={i}>{step.replace(/^Step\s*\d+:\s*/i, "")}</li>
+                                    ))}
+                                  </ol>
+                                </div>
+                              )}
+                              {r.health_tip && (
+                                <div className="gen-health-tip" style={{ margin: "1rem 0 0" }}>
+                                  <span className="gen-health-icon"><Leaf size={14} strokeWidth={1.8} /></span>
+                                  <div><strong>Health tip:</strong> {r.health_tip}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-
-                {!generating && genRecipe && (
-                  <>
-                    {!user && genCount >= 1 && (
-                      <div className="gen-tries-note">
-                        {genCount === 1
-                          ? <>1 free try left as a guest. <button className="gen-tries-signin" onClick={onLogin}>Sign in</button> to get unlimited tries.</>
-                          : <>No more guest tries. <button className="gen-tries-signin" onClick={onLogin}>Sign in</button> to keep using AI.</>
-                        }
-                      </div>
-                    )}
-                    {renderGenPanel()}
-                  </>
                 )}
               </div>
             )}
@@ -995,20 +1032,60 @@ export default function Home({
                     </div>
                   )}
 
-                  {/* AI Generate CTA — navigates to dedicated AI Recipes view */}
+                  {/* AI Generate CTA */}
                   <div className="ai-gen-cta">
-                    <button className="ai-gen-toggle" onClick={() => handleSidebarNavigate("airecipes")}>
-                      <Sparkles size={14} strokeWidth={2} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-                      Not sure what to cook? Use CookSmart AI
-                    </button>
+                    {!genOpen ? (
+                      <button className="ai-gen-toggle" onClick={() => setGenOpen(true)}>
+                        <Sparkles size={14} strokeWidth={2} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+                        Not sure what to cook? Use CookSmart AI
+                      </button>
+                    ) : genLimitHit ? (
+                      <div className="gen-limit-box">
+                        <p>You've used your 2 free generations. Sign in to keep going.</p>
+                        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                          <button className="gen-limit-signin-btn" onClick={onLogin}>Sign In</button>
+                          <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenLimitHit(false); setError(""); }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ai-gen-box">
+                        {!user && (
+                          <p className="gen-guest-note">
+                            {genCount === 0 ? "2 free generations available — sign in for unlimited." :
+                             genCount === 1 ? "1 free generation left." : null}
+                          </p>
+                        )}
+                        <textarea
+                          className="nlp-textarea"
+                          placeholder='e.g. "I have chicken, tomatoes and some garlic at home"'
+                          value={genText}
+                          onChange={e => setGenText(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
+                          rows={3} autoFocus
+                        />
+                        <div className="ai-gen-actions">
+                          <button className="search-btn" onClick={handleGenerate}
+                            disabled={genLoading || generating || (!genText.trim() && !genPills.length)}>
+                            {generating ? t("generating") : genLoading ? t("reading_ings") : t("generate_btn")}
+                          </button>
+                          <button className="ai-gen-cancel" onClick={() => { setGenOpen(false); setGenText(""); setGenPills([]); setError(""); setGenLimitHit(false); }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* ── Feature Grid — home view only ── */}
                 {view === "home" && (
                   <section className="feature-grid-section">
-                    <h2 className="feature-grid-title">Start cooking in seconds</h2>
-                    <p className="feature-grid-subtitle">Everything you need to discover, plan and cook great food.</p>
+                    <h2 className="feature-grid-title">
+                      {user ? `Hi, ${user.name.split(" ")[0]}` : "Start cooking in seconds"}
+                    </h2>
+                    <p className="feature-grid-subtitle">
+                      {user ? "What are you cooking today?" : "Everything you need to discover, plan and cook great food."}
+                    </p>
                     <div className="feature-grid">
                       <div className="feature-card" onClick={handleCardSearchName} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleCardSearchName()}>
                         <div className="feature-card-icon"><Search size={24} strokeWidth={2} /></div>
@@ -1038,8 +1115,42 @@ export default function Home({
                 <div className="home-content">
                   {error && <div className="error-banner">{error}</div>}
 
-                  {/* ── Category pills — EXPLORE only ── */}
-                  {view === "explore" && !searched && (
+                  {generating && (
+                    <div className="gen-loading">
+                      <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+                      <p>CookSmart AI is creating your recipe…</p>
+                    </div>
+                  )}
+
+                  {genClarifyMsg && !generating && (
+                    <div className="gen-clarify-box">
+                      <span className="gen-clarify-icon"><UtensilsCrossed size={18} strokeWidth={1.8} /></span>
+                      <p>{genClarifyMsg}</p>
+                    </div>
+                  )}
+
+                  {/* AI-generated recipe — shown alone, no recipe grid beneath */}
+                  {genRecipe && !generating && (
+                    <>
+                      {!user && genCount >= 1 && (
+                        <div className="gen-tries-note">
+                          {genCount === 1
+                            ? <>1 free try left as a guest. <button className="gen-tries-signin" onClick={onLogin}>Sign in</button> to get unlimited tries.</>
+                            : <>No more guest tries. <button className="gen-tries-signin" onClick={onLogin}>Sign in</button> to keep using AI.</>}
+                        </div>
+                      )}
+                      {renderGenPanel()}
+                      <button
+                        style={{ marginBottom: "1.5rem", padding: ".5rem 1rem", background: "none", border: "1.5px solid var(--border)", borderRadius: 99, cursor: "pointer", fontSize: ".85rem", color: "var(--stone)" }}
+                        onClick={() => { setGenRecipe(null); setGenText(""); setGenPills([]); setGenClarifyMsg(""); setGenSaved(false); setGenSectionSaved([]); }}
+                      >
+                        Clear result
+                      </button>
+                    </>
+                  )}
+
+                  {/* ── Category pills — EXPLORE only, hidden when generated recipe is showing ── */}
+                  {view === "explore" && !searched && !genRecipe && (
                     <div className="category-section">
                       <div className="section-head-row" style={{ marginBottom: ".85rem" }}>
                         <h2 className="category-section-title" style={{ marginBottom: 0 }}>Browse by category</h2>
@@ -1061,8 +1172,8 @@ export default function Home({
                     </div>
                   )}
 
-                  {/* ── Recipe sections — EXPLORE only ── */}
-                  {view === "explore" && (
+                  {/* ── Recipe sections — EXPLORE only, hidden when generated recipe is showing ── */}
+                  {view === "explore" && !genRecipe && (
                     <>
                       {mode === "ingredients" && searched && aiResults.length > 0 && (
                         <div style={{ marginBottom: "2.5rem" }}>

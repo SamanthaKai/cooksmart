@@ -17,6 +17,7 @@ const CATEGORIES = [
 ];
 
 const GUEST_MESSAGES = {
+  airecipes: "Sign in to save and view your AI-generated recipes.",
   mealplan:  "Save your meal plan — sign in (free)",
   myrecipes: "Save recipes you love. Sign in to build your collection.",
   favorites: "Favorites are saved with your account. Sign in to keep them.",
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
   { id: "home",       label: "Home",           Icon: HomeIcon },
   { id: "explore",    label: "Explore Recipes", Icon: Search },
   { id: "categories", label: "Categories",     Icon: LayoutGrid, hasDropdown: true },
-  { id: "airecipes",  label: "AI Recipes",     Icon: Sparkles },
+  { id: "airecipes",  label: "AI Recipes",     Icon: Sparkles,   requireAuth: true },
   { id: "mealplan",   label: "Meal Planner",   Icon: CalendarDays, requireAuth: true },
   { id: "myrecipes",  label: "My Recipes",     Icon: Bookmark,   requireAuth: true },
   { id: "favorites",  label: "Favorites",      Icon: Heart,      requireAuth: true },
