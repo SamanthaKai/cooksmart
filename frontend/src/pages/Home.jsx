@@ -1102,7 +1102,7 @@ export default function Home({
                         <div className="feature-card-title">Generate a Recipe with AI</div>
                         <div className="feature-card-desc">No idea what to cook? Let AI create something just for you.</div>
                       </div>
-                      <div className="feature-card" onClick={() => handleSidebarNavigate(user ? "profile" : "explore")} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && handleSidebarNavigate(user ? "profile" : "explore")}>
+                      <div className="feature-card" onClick={() => user ? handleSidebarNavigate("profile") : onRequestLogin()} role="button" tabIndex={0} onKeyDown={e => { if (e.key === "Enter") user ? handleSidebarNavigate("profile") : onRequestLogin(); }}>
                         <div className="feature-card-icon"><User size={24} strokeWidth={2} /></div>
                         <div className="feature-card-title">Your Personalised Profile</div>
                         <div className="feature-card-desc">Save preferences, dietary needs, and your favourite meals.</div>
