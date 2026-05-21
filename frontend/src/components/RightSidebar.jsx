@@ -123,13 +123,13 @@ export default function RightSidebar({ user, onMealPlan, onSelectRecipe, onLogin
           </div>
         ) : user ? (
           <div className="rs-meal-empty">
-            <div className="rs-meal-empty-icon">📅</div>
+            <div className="rs-meal-empty-icon"><CalendarDays size={22} strokeWidth={1.5} /></div>
             <p className="rs-meal-empty-title">No meals planned yet</p>
             <p className="rs-meal-empty-sub">Start planning your week!</p>
           </div>
         ) : (
           <div className="rs-meal-empty">
-            <div className="rs-meal-empty-icon">📅</div>
+            <div className="rs-meal-empty-icon"><CalendarDays size={22} strokeWidth={1.5} /></div>
             <p className="rs-meal-empty-title">Plan your meals</p>
             <p className="rs-meal-empty-sub">Sign in to see your meal plan.</p>
           </div>

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
+import { CalendarDays, ShoppingCart, X, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = false }) {
-  const [plan, setPlan]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied]   = useState(false);
+  const [plan, setPlan]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [copied, setCopied]       = useState(false);
+  const [listOpen, setListOpen]   = useState(false);
 
   useEffect(() => {
     api.getMealPlan()
@@ -22,7 +24,6 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
     } catch {}
   }
 
-  // Deduplicate recipes and extract their raw ingredient strings
   const recipeGroups = [];
   const seenIds = new Set();
   plan.forEach(item => {
@@ -54,7 +55,10 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
       {!isEmbedded && (
         <nav className="navbar">
           <span className="navbar-brand">Cook<span>Smart</span></span>
-          <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>📅 Weekly Meal Plan</span>
+          <span style={{ display: "flex", alignItems: "center", gap: ".4rem", fontSize: ".82rem", color: "var(--stone)" }}>
+            <CalendarDays size={15} strokeWidth={1.8} />
+            Weekly Meal Plan
+          </span>
         </nav>
       )}
 
@@ -68,12 +72,16 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
           </button>
         )}
 
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "2rem", flexWrap: "wrap", gap: ".5rem" }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.9rem", color: "var(--charcoal)" }}>
-            📅 Your Meal Plan
-          </h2>
+        {/* Page header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: ".5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
+            <CalendarDays size={22} strokeWidth={1.8} style={{ color: "var(--earth)" }} />
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.6rem", color: "var(--charcoal)", margin: 0 }}>
+              Your Meal Plan
+            </h2>
+          </div>
           {plan.length > 0 && (
-            <span style={{ fontSize: ".85rem", color: "var(--stone)" }}>
+            <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>
               {plan.length} recipe{plan.length !== 1 ? "s" : ""} across {activeDays.length} day{activeDays.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -85,7 +93,6 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
             <p>Loading meal plan…</p>
           </div>
         ) : plan.length === 0 ? (
-          /* ── Empty state — centred vertically and horizontally ── */
           <div style={{
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
@@ -94,7 +101,7 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
             padding: "2rem 1rem",
             color: "var(--stone)",
           }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>📅</div>
+            <CalendarDays size={44} strokeWidth={1.2} style={{ color: "var(--stone)", marginBottom: "1rem" }} />
             <h3 style={{ marginBottom: ".5rem", color: "var(--charcoal)", fontSize: "1.1rem" }}>
               No meals planned yet
             </h3>
@@ -102,8 +109,8 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
               Browse recipes and tap <strong>Add to Meal Plan</strong> to build your week.
             </p>
             <button
-              className="nlp-extract-btn"
-              style={{ width: "auto", padding: ".65rem 1.5rem" }}
+              className="search-btn"
+              style={{ width: "auto", padding: ".65rem 1.5rem", marginTop: 0 }}
               onClick={onBack || (() => {})}
             >
               Browse recipes
@@ -111,8 +118,8 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
           </div>
         ) : (
           <>
-            {/* ── Days ── */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2.5rem" }}>
+            {/* Days */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
               {DAYS.map(day => {
                 const items = byDay[day];
                 if (items.length === 0) return null;
@@ -124,8 +131,8 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
                   }}>
                     <div style={{
                       background: "var(--earth)", color: "var(--white)",
-                      padding: ".55rem 1.25rem", fontWeight: 600,
-                      fontSize: ".88rem", letterSpacing: ".02em",
+                      padding: ".5rem 1.25rem", fontWeight: 600,
+                      fontSize: ".85rem", letterSpacing: ".02em",
                     }}>
                       {day}
                     </div>
@@ -136,7 +143,7 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
                           style={{
                             display: "flex", alignItems: "center",
                             justifyContent: "space-between",
-                            padding: ".7rem 1.25rem",
+                            padding: ".65rem 1.25rem",
                             borderBottom: idx < items.length - 1 ? "1px solid var(--cream-dark)" : "none",
                           }}
                         >
@@ -145,16 +152,16 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
                               style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, font: "inherit" }}
                               onClick={() => onSelectRecipe(item.recipe.id)}
                             >
-                              <span style={{ fontWeight: 600, color: "var(--charcoal)", fontSize: ".95rem" }}>
+                              <span style={{ fontWeight: 600, color: "var(--charcoal)", fontSize: ".92rem" }}>
                                 {item.recipe.name}
                               </span>
                               {item.recipe.local_name && item.recipe.local_name !== item.recipe.name && (
-                                <span style={{ marginLeft: ".5rem", fontSize: ".8rem", color: "var(--stone)" }}>
+                                <span style={{ marginLeft: ".5rem", fontSize: ".78rem", color: "var(--stone)" }}>
                                   ({item.recipe.local_name})
                                 </span>
                               )}
                             </button>
-                            <div style={{ fontSize: ".77rem", color: "var(--stone)", marginTop: "2px" }}>
+                            <div style={{ fontSize: ".75rem", color: "var(--stone)", marginTop: "2px" }}>
                               {[item.recipe.cuisine_type, item.recipe.course !== "sauce" ? item.recipe.course : null, item.recipe.servings && `${item.recipe.servings} servings`].filter(Boolean).join(" · ")}
                             </div>
                           </div>
@@ -164,12 +171,14 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
                             aria-label="Remove from meal plan"
                             style={{
                               background: "none", border: "none", cursor: "pointer",
-                              color: "var(--stone)", fontSize: "1rem",
-                              padding: ".3rem .5rem", borderRadius: 6,
-                              lineHeight: 1, flexShrink: 0,
+                              color: "var(--stone)", display: "flex", alignItems: "center",
+                              padding: ".3rem .4rem", borderRadius: 6, flexShrink: 0,
+                              transition: "color .15s",
                             }}
+                            onMouseEnter={e => e.currentTarget.style.color = "var(--earth)"}
+                            onMouseLeave={e => e.currentTarget.style.color = "var(--stone)"}
                           >
-                            ✕
+                            <X size={15} strokeWidth={2} />
                           </button>
                         </div>
                       ))}
@@ -179,72 +188,80 @@ export default function MealPlanPage({ onBack, onSelectRecipe, isEmbedded = fals
               })}
             </div>
 
-            {/* ── Shopping List — grouped by recipe ── */}
+            {/* Shopping list — collapsible */}
             {recipeGroups.length > 0 && (
               <div style={{
                 background: "var(--white)", borderRadius: "var(--radius)",
                 border: "1px solid var(--border)", boxShadow: "var(--shadow)",
                 overflow: "hidden",
               }}>
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)",
-                }}>
-                  <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: "1.2rem" }}>
-                    🛒 Shopping List
-                  </h3>
-                  <button
-                    onClick={handleCopy}
-                    style={{
-                      padding: ".42rem 1rem", borderRadius: 99,
-                      border: `1.5px solid ${copied ? "var(--green)" : "var(--earth)"}`,
-                      background: copied ? "var(--green)" : "transparent",
-                      color: copied ? "var(--white)" : "var(--earth)",
-                      cursor: "pointer", fontSize: ".82rem", fontWeight: 600,
-                      transition: "all .2s",
-                    }}
-                  >
-                    {copied ? "✓ Copied!" : "Copy list"}
-                  </button>
-                </div>
+                <button
+                  onClick={() => setListOpen(o => !o)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    width: "100%", padding: ".85rem 1.25rem",
+                    background: "none", border: "none", cursor: "pointer",
+                    borderBottom: listOpen ? "1px solid var(--border)" : "none",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: ".5rem", fontFamily: "'Playfair Display', serif", fontSize: "1.05rem", fontWeight: 700 }}>
+                    <ShoppingCart size={17} strokeWidth={1.8} style={{ color: "var(--earth)" }} />
+                    Shopping List
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: ".78rem", fontWeight: 400, color: "var(--stone)" }}>
+                      ({recipeGroups.reduce((n, g) => n + g.ingredients.length, 0)} items)
+                    </span>
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
+                    {listOpen && (
+                      <button
+                        onClick={e => { e.stopPropagation(); handleCopy(); }}
+                        style={{
+                          padding: ".3rem .8rem", borderRadius: 99,
+                          border: `1.5px solid ${copied ? "var(--green)" : "var(--earth)"}`,
+                          background: copied ? "var(--green)" : "transparent",
+                          color: copied ? "var(--white)" : "var(--earth)",
+                          cursor: "pointer", fontSize: ".78rem", fontWeight: 600,
+                          display: "flex", alignItems: "center", gap: ".3rem",
+                          transition: "all .2s",
+                        }}
+                      >
+                        {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
+                        {copied ? "Copied!" : "Copy"}
+                      </button>
+                    )}
+                    {listOpen
+                      ? <ChevronUp size={16} strokeWidth={2} style={{ color: "var(--stone)" }} />
+                      : <ChevronDown size={16} strokeWidth={2} style={{ color: "var(--stone)" }} />}
+                  </span>
+                </button>
 
-                <div style={{ padding: "1rem 1.25rem 1.5rem" }}>
-                  {recipeGroups.map((group, gi) => (
-                    <div
-                      key={gi}
-                      style={{ marginBottom: gi < recipeGroups.length - 1 ? "1.35rem" : 0 }}
-                    >
-                      <p style={{
-                        fontWeight: 700,
-                        color: "var(--earth)",
-                        fontSize: ".9rem",
-                        marginBottom: ".4rem",
-                        letterSpacing: ".01em",
-                      }}>
-                        {group.name}
-                      </p>
-                      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                        {group.ingredients.map((ing, ii) => (
-                          <li
-                            key={ii}
-                            style={{
-                              fontSize: ".88rem",
-                              color: "var(--charcoal)",
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: ".4rem",
-                              lineHeight: 1.55,
-                              marginBottom: ".2rem",
-                            }}
-                          >
-                            <span style={{ color: "var(--earth)", fontWeight: 700, flexShrink: 0, lineHeight: 1.55 }}>•</span>
-                            {ing}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+                {listOpen && (
+                  <div style={{ padding: ".85rem 1.25rem 1.25rem" }}>
+                    {recipeGroups.map((group, gi) => (
+                      <div key={gi} style={{ marginBottom: gi < recipeGroups.length - 1 ? "1.1rem" : 0 }}>
+                        <p style={{
+                          fontWeight: 700, color: "var(--earth)",
+                          fontSize: ".85rem", marginBottom: ".35rem",
+                        }}>
+                          {group.name}
+                        </p>
+                        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                          {group.ingredients.map((ing, ii) => (
+                            <li key={ii} style={{
+                              fontSize: ".85rem", color: "var(--charcoal)",
+                              display: "flex", alignItems: "flex-start",
+                              gap: ".4rem", lineHeight: 1.5, marginBottom: ".15rem",
+                            }}>
+                              <span style={{ color: "var(--earth)", fontWeight: 700, flexShrink: 0 }}>•</span>
+                              {ing}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

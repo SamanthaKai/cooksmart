@@ -4,6 +4,7 @@ import RecipeCard from "../components/RecipeCard";
 import { getRecipeImage } from "../utils/imageHelper";
 import { downloadRecipePDF } from "../utils/downloadPDF";
 import { useLang } from "../context/LanguageContext";
+import { Clock, Users, Flame, Sparkles, UtensilsCrossed } from "lucide-react";
 
 // Split "200g lemon grass" into { qty: "200g", name: "lemon grass" }
 function parseIngredient(raw) {
@@ -49,7 +50,7 @@ function scaleQty(qtyStr, factor) {
 }
 
 // Hero image fills parent via absolute positioning
-function RecipeImage({ recipe, fallbackEmoji }) {
+function RecipeImage({ recipe }) {
   const [src, setSrc]       = useState(null);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -65,8 +66,8 @@ function RecipeImage({ recipe, fallbackEmoji }) {
   }, [recipe.id]);
 
   if (failed) return (
-    <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: "5rem" }}>
-      {fallbackEmoji}
+    <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "rgba(255,255,255,0.25)" }}>
+      <UtensilsCrossed size={56} strokeWidth={1.2} />
     </span>
   );
   if (!src) return null;
@@ -259,22 +260,6 @@ export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedId
     window.scrollTo(0, 0);
   }, [recipeId]);
 
-  const emoji = (r) => {
-    const n = (r?.name || "").toLowerCase();
-    if (n.includes("chicken")) return "🍗";
-    if (n.includes("fish") || n.includes("tilapia")) return "🐟";
-    if (n.includes("beef") || n.includes("meat")) return "🥩";
-    if (n.includes("rice") || n.includes("jollof")) return "🍚";
-    if (n.includes("soup") || n.includes("stew")) return "🍲";
-    if (n.includes("banana") || n.includes("matoke")) return "🍌";
-    if (n.includes("bean")) return "🫘";
-    if (n.includes("tea") || n.includes("beverage")) return "☕";
-    if (r?.course === "beverage") return "🥤";
-    if (r?.course === "soup") return "🍜";
-    if (r?.cuisine_type === "african") return "🌍";
-    return "🍽️";
-  };
-
   if (loading) return (
     <div style={{ paddingTop: "4rem" }}>
       <div className="state-center"><div className="spinner" /><p>Loading recipe…</p></div>
@@ -283,7 +268,7 @@ export default function RecipeDetail({ recipeId, onBack, onSelectRecipe, savedId
 
   if (!recipe) return (
     <div className="state-center" style={{ paddingTop: "4rem" }}>
-      <div className="emoji">😕</div>
+      <UtensilsCrossed size={40} strokeWidth={1.3} style={{ color: "var(--stone)", marginBottom: "1rem" }} />
       <h3>Recipe not found</h3>
       <button className="back-btn" onClick={onBack}>← Back</button>
     </div>
@@ -313,7 +298,7 @@ const steps = (recipe.instructions || "")
         <nav className="navbar">
           <span className="navbar-brand">Cook<span>Smart</span></span>
           <span style={{ fontSize: ".82rem", color: "var(--stone)" }}>
-            {recipe.cuisine_type === "african" ? "🌍 African cuisine" : "🍴 Western cuisine"}
+            {recipe.cuisine_type === "african" ? "African cuisine" : "Western cuisine"}
           </span>
         </nav>
       )}
@@ -328,7 +313,7 @@ const steps = (recipe.instructions || "")
 
         {/* Hero — image fills background, text overlaid */}
         <div className="detail-hero">
-          <RecipeImage recipe={recipe} fallbackEmoji={emoji(recipe)} />
+          <RecipeImage recipe={recipe} />
           <div className="detail-hero-overlay">
             <div className="detail-hero-top">
               <div className="detail-actions">
@@ -418,9 +403,9 @@ const steps = (recipe.instructions || "")
                 <span className="meta-chip cuisine">{recipe.cuisine_type}</span>
                 <span className="meta-chip green">{recipe.course}</span>
                 {recipe.community && <span className="meta-chip">{recipe.community}</span>}
-                {recipe.prep_time  && <span className="meta-chip">⏱ Prep: {recipe.prep_time}min</span>}
-                {recipe.cook_time  && <span className="meta-chip">🔥 Cook: {recipe.cook_time}min</span>}
-                {recipe.servings   && <span className="meta-chip">👥 Serves {currentServings}</span>}
+                {recipe.prep_time  && <span className="meta-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Clock size={12} strokeWidth={2} />Prep: {recipe.prep_time}min</span>}
+                {recipe.cook_time  && <span className="meta-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Flame size={12} strokeWidth={2} />Cook: {recipe.cook_time}min</span>}
+                {recipe.servings   && <span className="meta-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Users size={12} strokeWidth={2} />Serves {currentServings}</span>}
               </div>
               <h1 className="detail-title">{recipe.name}</h1>
               {recipe.local_name && recipe.local_name !== recipe.name && (
@@ -575,8 +560,8 @@ const steps = (recipe.instructions || "")
             <button className="ai-feature-btn" onClick={loadTips}>
               💡 Cooking tips
             </button>
-            <button className="ai-feature-btn" onClick={loadEnhancement}>
-              ✨ Enhance recipe
+            <button className="ai-feature-btn" onClick={loadEnhancement} style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Sparkles size={14} strokeWidth={2} /> Enhance recipe
             </button>
           </div>
 
@@ -813,7 +798,7 @@ const steps = (recipe.instructions || "")
           {!recoLoading && recos.length > 0 && (
             <div className="reco-grid">
               {recos.map(r => (
-                <RecipeCard key={r.id} recipe={r} emoji={emoji(r)} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason}
+                <RecipeCard key={r.id} recipe={r} onClick={() => onSelectRecipe(r.id)} aiReason={r.ai_reason}
                   isSaved={savedIds?.has(r.id)} onToggleSave={onToggleSave || onRequestLogin} />
               ))}
             </div>

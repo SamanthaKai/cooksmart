@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, ChefHat } from "lucide-react";
+import { Clock, ChefHat, UtensilsCrossed } from "lucide-react";
 import { getRecipeImage } from "../utils/imageHelper";
 
 function getFlavorDescriptor(recipe) {
@@ -22,7 +22,7 @@ function getFlavorDescriptor(recipe) {
   return "Bold & Flavorful";
 }
 
-function RecipeImage({ recipe, emoji }) {
+function RecipeImage({ recipe }) {
   const [src, setSrc]       = useState(null);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -37,7 +37,11 @@ function RecipeImage({ recipe, emoji }) {
     return () => { active = false; };
   }, [recipe.id]);
 
-  if (failed) return <span className="card-img-emoji">{emoji}</span>;
+  if (failed) return (
+    <span className="card-img-icon" aria-hidden="true">
+      <UtensilsCrossed size={36} strokeWidth={1.3} />
+    </span>
+  );
   if (!src) return <span className="card-img-skeleton" aria-hidden="true" />;
 
   return (
@@ -73,14 +77,14 @@ function SmallBookmarkIcon() {
 }
 
 export default function RecipeCard({
-  recipe, emoji, onClick,
+  recipe, onClick,
   aiReason, matchCount, requestedCount,
   isSaved, onToggleSave,
 }) {
   return (
     <div className="recipe-card" onClick={onClick}>
       <div className="card-img">
-        <RecipeImage recipe={recipe} emoji={emoji} />
+        <RecipeImage recipe={recipe} />
         <span className={`card-cuisine${recipe.cuisine_type === "western" ? " western" : ""}`}>
           {recipe.cuisine_type}
         </span>

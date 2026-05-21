@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { useLang } from "../context/LanguageContext";
+import { User, Building2 } from "lucide-react";
 
 function EyeIcon({ open }) {
   return open ? (
@@ -90,12 +91,12 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
                 <label className="login-label">Who are you cooking for?</label>
                 <div className="user-type-cards">
                   <button type="button" className={`user-type-card${userType === "individual" ? " active" : ""}`} onClick={() => setUserType("individual")}>
-                    <span className="user-type-icon">👤</span>
+                    <span className="user-type-icon"><User size={20} strokeWidth={1.8} /></span>
                     <span className="user-type-title">Personal</span>
                     <span className="user-type-desc">I cook for myself or my family</span>
                   </button>
                   <button type="button" className={`user-type-card${userType === "establishment" ? " active" : ""}`} onClick={() => setUserType("establishment")}>
-                    <span className="user-type-icon">🏢</span>
+                    <span className="user-type-icon"><Building2 size={20} strokeWidth={1.8} /></span>
                     <span className="user-type-title">Establishment</span>
                     <span className="user-type-desc">Restaurant, hotel, or food business</span>
                   </button>
@@ -189,7 +190,7 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
                     className={`user-type-card${userType === "individual" ? " active" : ""}`}
                     onClick={() => setUserType("individual")}
                   >
-                    <span className="user-type-icon">👤</span>
+                    <span className="user-type-icon"><User size={20} strokeWidth={1.8} /></span>
                     <span className="user-type-title">Personal</span>
                     <span className="user-type-desc">I cook for myself or my family</span>
                   </button>
@@ -198,7 +199,7 @@ export default function LoginPage({ onLogin, onBack, isModal = false }) {
                     className={`user-type-card${userType === "establishment" ? " active" : ""}`}
                     onClick={() => setUserType("establishment")}
                   >
-                    <span className="user-type-icon">🏢</span>
+                    <span className="user-type-icon"><Building2 size={20} strokeWidth={1.8} /></span>
                     <span className="user-type-title">Establishment</span>
                     <span className="user-type-desc">Restaurant, hotel, or food business</span>
                   </button>

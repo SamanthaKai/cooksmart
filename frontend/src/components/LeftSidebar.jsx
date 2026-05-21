@@ -3,6 +3,7 @@ import {
   Home as HomeIcon, Search, LayoutGrid, CalendarDays,
   Heart, Bookmark, ShoppingCart, User, ChevronDown, ChevronRight,
   Globe, Soup, UtensilsCrossed, Cookie, Sun, GlassWater, Crown,
+  Sparkles, Lock, X,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -15,10 +16,18 @@ const CATEGORIES = [
   { label: "Drinks",       Icon: GlassWater,      type: "course",  value: "beverage" },
 ];
 
+const GUEST_MESSAGES = {
+  mealplan:  "Save your meal plan — sign in (free)",
+  myrecipes: "Save recipes you love. Sign in to build your collection.",
+  favorites: "Favorites are saved with your account. Sign in to keep them.",
+  shopping:  "Keep your shopping list across any device. Sign in to save it.",
+};
+
 const NAV_ITEMS = [
   { id: "home",       label: "Home",           Icon: HomeIcon },
   { id: "explore",    label: "Explore Recipes", Icon: Search },
   { id: "categories", label: "Categories",     Icon: LayoutGrid, hasDropdown: true },
+  { id: "airecipes",  label: "AI Recipes",     Icon: Sparkles },
   { id: "mealplan",   label: "Meal Planner",   Icon: CalendarDays, requireAuth: true },
   { id: "myrecipes",  label: "My Recipes",     Icon: Bookmark,   requireAuth: true },
   { id: "favorites",  label: "Favorites",      Icon: Heart,      requireAuth: true },
@@ -27,12 +36,20 @@ const NAV_ITEMS = [
 ];
 
 export default function LeftSidebar({ user, onRequestLogin, activePage, onNavigate, onCategorySelect }) {
-  const [catOpen, setCatOpen]     = useState(false);
-  const [premToast, setPremToast] = useState(false);
+  const [catOpen, setCatOpen]       = useState(false);
+  const [premToast, setPremToast]   = useState(false);
+  const [guestToast, setGuestToast] = useState(null);
 
   function handleNav(item) {
-    if (item.requireAuth && !user) { onRequestLogin(); return; }
+    if (item.requireAuth && !user) {
+      setGuestToast(prev => prev?.id === item.id ? null : {
+        id: item.id,
+        message: GUEST_MESSAGES[item.id] || "Sign in to access this feature.",
+      });
+      return;
+    }
     if (item.id === "categories") { setCatOpen(o => !o); return; }
+    setGuestToast(null);
     onNavigate(item.id);
   }
 
@@ -48,13 +65,11 @@ export default function LeftSidebar({ user, onRequestLogin, activePage, onNaviga
 
   return (
     <aside className="left-sidebar">
-      {/* Brand */}
       <div className="sidebar-brand">
         <span className="sidebar-logo">Cook<span>Smart</span></span>
         <p className="sidebar-tagline">Discover. Cook. Enjoy.</p>
       </div>
 
-      {/* Navigation */}
       <nav className="sidebar-nav">
         {NAV_ITEMS.map(item => (
           <div key={item.id}>
@@ -71,7 +86,31 @@ export default function LeftSidebar({ user, onRequestLogin, activePage, onNaviga
                     : <ChevronRight size={13} strokeWidth={2} />}
                 </span>
               )}
+              {item.requireAuth && !user && (
+                <Lock size={11} strokeWidth={2} style={{ marginLeft: "auto", opacity: 0.4 }} />
+              )}
             </button>
+
+            {guestToast?.id === item.id && (
+              <div className="sidebar-guest-toast">
+                <p>{guestToast.message}</p>
+                <div className="sidebar-guest-toast-actions">
+                  <button
+                    className="sidebar-guest-signin"
+                    onClick={() => { setGuestToast(null); onRequestLogin(); }}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    className="sidebar-guest-dismiss"
+                    onClick={() => setGuestToast(null)}
+                    aria-label="Dismiss"
+                  >
+                    <X size={13} strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {item.id === "categories" && catOpen && (
               <div className="sidebar-cat-dropdown">
@@ -91,14 +130,15 @@ export default function LeftSidebar({ user, onRequestLogin, activePage, onNaviga
         ))}
       </nav>
 
-      {/* Premium — pinned at bottom */}
-      <div className="sidebar-premium">
-        <button className="sidebar-premium-btn" onClick={showPremium}>
-          <Crown size={14} strokeWidth={1.8} />
-          <span>Try Premium</span>
-        </button>
-        {premToast && <div className="sidebar-premium-toast">Coming soon! 🎉</div>}
-      </div>
+      {user && (
+        <div className="sidebar-premium">
+          <button className="sidebar-premium-btn" onClick={showPremium}>
+            <Crown size={14} strokeWidth={1.8} />
+            <span>Try Premium</span>
+          </button>
+          {premToast && <div className="sidebar-premium-toast">Coming soon!</div>}
+        </div>
+      )}
     </aside>
   );
 }

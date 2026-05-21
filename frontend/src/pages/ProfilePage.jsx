@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import { downloadRecipePDF } from "../utils/downloadPDF";
 import ConfirmModal from "../components/ConfirmModal";
+import { Clock, Users } from "lucide-react";
 
 const DIETARY_OPTIONS = [
   { value: "vegetarian",  label: "Vegetarian" },
@@ -201,7 +202,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
             <h1 className="profile-name">{user.name}</h1>
             <p className="profile-email">{user.email}</p>
             <span className={`account-type-badge account-type-badge--${userType}`}>
-              {userType === "establishment" ? "🏢 Establishment" : "👤 Personal"}
+              {userType === "establishment" ? "Establishment" : "Personal"}
             </span>
           </div>
         </div>
@@ -220,7 +221,7 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
                 <label className="profile-label">Account Type</label>
                 <p className="profile-hint" style={{ marginTop: 0 }}>
                   <span className={`account-type-badge account-type-badge--${userType}`}>
-                    {userType === "establishment" ? "🏢 Establishment" : "👤 Personal"}
+                    {userType === "establishment" ? "Establishment" : "Personal"}
                   </span>
                 </p>
               </div>
@@ -333,8 +334,8 @@ export default function ProfilePage({ user, onBack, onUserUpdate, onSelectRecipe
                       <div className="my-gen-header-right">
                         <div className="my-recipe-meta">
                           {r.cuisine      && <span className="meta-chip cuisine" style={{ fontSize: ".75rem" }}>{r.cuisine}</span>}
-                          {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem" }}>⏱ {r.cooking_time}</span>}
-                          {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem" }}>👥 {r.servings}</span>}
+                          {r.cooking_time && <span className="meta-chip" style={{ fontSize: ".75rem", display: "inline-flex", alignItems: "center", gap: "3px" }}><Clock size={11} strokeWidth={2} />{r.cooking_time}</span>}
+                          {r.servings     && <span className="meta-chip" style={{ fontSize: ".75rem", display: "inline-flex", alignItems: "center", gap: "3px" }}><Users size={11} strokeWidth={2} />{r.servings}</span>}
                         </div>
                         <button
                           className="my-gen-delete-btn"
