@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { CheckCircle2, X } from "lucide-react";
 import Home from "./pages/Home";
 import RecipeDetail from "./pages/RecipeDetail";
 import LoginPage from "./pages/LoginPage";
@@ -18,8 +19,13 @@ export default function App() {
   const [savedIds, setSavedIds] = useState(new Set());
   const [likedIds, setLikedIds] = useState(new Set());
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [toast, setToast] = useState(null);
-  const toastTimer = useRef(null);
+
+  // ── Toast state ───────────────────────────────────────────────────────────
+  const [signinToast, setSigninToast] = useState(null); // { name, key, exiting }
+  const [signoutToast, setSignoutToast] = useState(null);
+  const signinTimer  = useRef(null);
+  const signinExit   = useRef(null);
+  const signoutTimer = useRef(null);
 
   const loadInteractions = useCallback(async () => {
     try {
@@ -42,10 +48,10 @@ export default function App() {
       .finally(() => setAuthLoading(false));
   }, [loadInteractions]);
 
-  function showToast(msg) {
-    clearTimeout(toastTimer.current);
-    setToast({ msg, key: Date.now() });
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  function dismissSigninToast() {
+    clearTimeout(signinTimer.current);
+    setSigninToast(prev => prev ? { ...prev, exiting: true } : null);
+    signinExit.current = setTimeout(() => setSigninToast(null), 300);
   }
 
   function handleLogin(loggedInUser) {
@@ -53,7 +59,11 @@ export default function App() {
     setShowLoginModal(false);
     setPage(prev => prev === "login" ? "home" : prev);
     loadInteractions();
-    showToast(`Welcome back, ${loggedInUser.name.split(" ")[0]}!`);
+
+    clearTimeout(signinTimer.current);
+    clearTimeout(signinExit.current);
+    setSigninToast({ name: loggedInUser.name.split(" ")[0], key: Date.now(), exiting: false });
+    signinTimer.current = setTimeout(dismissSigninToast, 4000);
   }
 
   function handleLogout() {
@@ -63,7 +73,10 @@ export default function App() {
     setLikedIds(new Set());
     setPage("home");
     setCurrentRecipeId(null);
-    showToast("Signed out");
+
+    clearTimeout(signoutTimer.current);
+    setSignoutToast({ key: Date.now() });
+    signoutTimer.current = setTimeout(() => setSignoutToast(null), 2800);
   }
 
   function handleSelectRecipe(id) {
@@ -71,7 +84,6 @@ export default function App() {
     setPage("recipe");
   }
 
-  // Called by RecipeCard / RecipeDetail when guest taps save/like
   function requestLogin() {
     setShowLoginModal(true);
   }
@@ -115,7 +127,6 @@ export default function App() {
     );
   }
 
-  // Full-page login (navigated to directly)
   if (page === "login") {
     return (
       <>
@@ -145,9 +156,23 @@ export default function App() {
 
       <Footer />
 
-      {/* ── Auth toast ── */}
-      {toast && (
-        <div key={toast.key} className="auth-toast">{toast.msg}</div>
+      {/* ── Sign-in toast ── */}
+      {signinToast && (
+        <div key={signinToast.key} className={`signin-toast${signinToast.exiting ? " signin-toast--out" : ""}`}>
+          <CheckCircle2 size={20} strokeWidth={2} style={{ flexShrink: 0, color: "#fff" }} />
+          <div className="signin-toast-body">
+            <div className="signin-toast-title">Welcome back, {signinToast.name}!</div>
+            <div className="signin-toast-sub">Ready to cook something great?</div>
+          </div>
+          <button className="signin-toast-close" onClick={dismissSigninToast} aria-label="Dismiss">
+            <X size={16} strokeWidth={2} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Sign-out toast ── */}
+      {signoutToast && (
+        <div key={signoutToast.key} className="auth-toast">Signed out</div>
       )}
 
       {/* ── Login modal — shown when guest taps save/like ── */}

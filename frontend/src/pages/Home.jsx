@@ -418,10 +418,8 @@ export default function Home({
       setView("airecipes");
       setAiExpandedId(null);
     } else if (id === "mealplan") {
-      if (!user) { onRequestLogin(); return; }
       setView("mealplan");
     } else if (id === "profile") {
-      if (!user) { onRequestLogin(); return; }
       setView("profile");
     } else {
       setView(id); // myrecipes | favorites | shopping
@@ -938,24 +936,56 @@ export default function Home({
             {/* ════ MEAL PLAN — embedded ════ */}
             {view === "mealplan" && (
               <div className="home-content">
-                <MealPlanPage
-                  isEmbedded
-                  onBack={() => handleSidebarNavigate("explore")}
-                  onSelectRecipe={onSelectRecipe}
-                />
+                {!user ? (
+                  <>
+                    <div className="view-section-head">
+                      <h2 className="view-section-title">
+                        <CalendarDays size={20} strokeWidth={1.8} style={{ color: "var(--earth)" }} />
+                        Meal Planner
+                      </h2>
+                      <p className="view-section-sub">Plan your week, one meal at a time</p>
+                    </div>
+                    <GuestGateView
+                      message="Sign in to build and save your weekly meal plan."
+                      onSignIn={onRequestLogin}
+                    />
+                  </>
+                ) : (
+                  <MealPlanPage
+                    isEmbedded
+                    onBack={() => handleSidebarNavigate("explore")}
+                    onSelectRecipe={onSelectRecipe}
+                  />
+                )}
               </div>
             )}
 
             {/* ════ PROFILE — embedded ════ */}
-            {view === "profile" && user && (
+            {view === "profile" && (
               <div className="home-content">
-                <ProfilePage
-                  isEmbedded
-                  user={user}
-                  onBack={() => handleSidebarNavigate("home")}
-                  onUserUpdate={onUserUpdate}
-                  onSelectRecipe={onSelectRecipe}
-                />
+                {!user ? (
+                  <>
+                    <div className="view-section-head">
+                      <h2 className="view-section-title">
+                        <User size={20} strokeWidth={1.8} style={{ color: "var(--earth)" }} />
+                        My Profile
+                      </h2>
+                      <p className="view-section-sub">Your account and preferences</p>
+                    </div>
+                    <GuestGateView
+                      message="Sign in to view and manage your profile."
+                      onSignIn={onRequestLogin}
+                    />
+                  </>
+                ) : (
+                  <ProfilePage
+                    isEmbedded
+                    user={user}
+                    onBack={() => handleSidebarNavigate("home")}
+                    onUserUpdate={onUserUpdate}
+                    onSelectRecipe={onSelectRecipe}
+                  />
+                )}
               </div>
             )}
 
