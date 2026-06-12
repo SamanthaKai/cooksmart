@@ -14,7 +14,7 @@ import smtplib
 from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from db import query, execute
@@ -168,34 +168,88 @@ def register():
 
 
 # ── Verify Email ──────────────────────────────────────────────────────────────
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://cooksmart-seven.vercel.app')
+
+def _verification_page(emoji, heading, body, success=True):
+    accent = '#e85d04' if success else '#c0392b'
+    bg     = '#fff8f3' if success else '#fff3f3'
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>CookSmart — {heading}</title>
+  <style>
+    *{{box-sizing:border-box;margin:0;padding:0}}
+    body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+          background:{bg};min-height:100vh;display:flex;align-items:center;
+          justify-content:center;padding:24px}}
+    .card{{background:#fff;border-radius:20px;padding:48px 40px;max-width:440px;
+           width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.10)}}
+    .emoji{{font-size:64px;line-height:1;margin-bottom:20px}}
+    .logo{{font-size:13px;font-weight:700;letter-spacing:.12em;color:{accent};
+           text-transform:uppercase;margin-bottom:28px}}
+    h1{{font-size:24px;font-weight:700;color:#1a1a1a;margin-bottom:12px}}
+    p{{font-size:15px;color:#666;line-height:1.6;margin-bottom:32px}}
+    a.btn{{display:inline-block;background:{accent};color:#fff;padding:14px 36px;
+           border-radius:50px;text-decoration:none;font-weight:600;font-size:15px;
+           transition:opacity .15s}}
+    a.btn:hover{{opacity:.88}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🍳 CookSmart</div>
+    <div class="emoji">{emoji}</div>
+    <h1>{heading}</h1>
+    <p>{body}</p>
+    <a class="btn" href="{FRONTEND_URL}">Go to CookSmart</a>
+  </div>
+</body>
+</html>"""
+    return html
+
 @auth_bp.route('/auth/verify', methods=['GET'])
 def verify_email():
     ensure_users_table()
     token = request.args.get('token', '').strip()
     if not token:
-        return jsonify({'error': 'Verification token is required.'}), 400
+        html = _verification_page('🔗', 'Invalid Link',
+            'This verification link is missing a token. Please use the link from your email.',
+            success=False)
+        return make_response(html, 400, {'Content-Type': 'text/html'})
 
     user = query(
         "SELECT id, is_verified, token_expires_at FROM users WHERE verification_token = %s",
         (token,), many=False
     )
     if not user:
-        return jsonify({'error': 'Invalid or expired verification link.'}), 400
+        html = _verification_page('😕', 'Link Not Found',
+            'This verification link is invalid or has already been used. If you already verified your account, go ahead and log in!',
+            success=False)
+        return make_response(html, 400, {'Content-Type': 'text/html'})
 
     if user['is_verified']:
-        return jsonify({'message': 'Your email is already verified. You can log in.'}), 200
+        html = _verification_page('✅', 'Already Verified',
+            'Your email is already verified. You\'re all set — just log in to start cooking!')
+        return make_response(html, 200, {'Content-Type': 'text/html'})
 
     expires_at = user['token_expires_at']
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_at:
-        return jsonify({'error': 'Verification link has expired. Please register again.'}), 400
+        html = _verification_page('⏰', 'Link Expired',
+            'Your verification link has expired. Please register again to get a new one.',
+            success=False)
+        return make_response(html, 400, {'Content-Type': 'text/html'})
 
     execute(
         "UPDATE users SET is_verified = TRUE, verification_token = NULL, token_expires_at = NULL WHERE id = %s",
         (user['id'],)
     )
-    return jsonify({'message': 'Email verified successfully! You can now log in.'}), 200
+    html = _verification_page('🎉', 'Email Verified!',
+        'Welcome to CookSmart! Your account is active and ready to go. Discover recipes, plan meals, and cook something amazing.')
+    return make_response(html, 200, {'Content-Type': 'text/html'})
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────

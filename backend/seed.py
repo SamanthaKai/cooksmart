@@ -11,10 +11,11 @@ import psycopg2
 from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=False)  # env vars set in shell take priority over .env
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'CookSmart.csv')
 
+DATABASE_URL = os.getenv('DATABASE_URL')
 DB_CONFIG = {
     'host':     os.getenv('DB_HOST',     'localhost'),
     'port':     int(os.getenv('DB_PORT', 5432)),
@@ -112,10 +113,11 @@ def seed():
     print(f"📄  Loaded {len(rows)} recipes from CSV")
 
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(dsn=DATABASE_URL) if DATABASE_URL else psycopg2.connect(**DB_CONFIG)
         conn.autocommit = False
         cur = conn.cursor()
-        print(f"✅  Connected to PostgreSQL ({DB_CONFIG['dbname']}@{DB_CONFIG['host']})")
+        _target = DATABASE_URL.split('@')[-1] if DATABASE_URL else f"{DB_CONFIG['dbname']}@{DB_CONFIG['host']}"
+        print(f"✅  Connected to PostgreSQL ({_target})")
     except psycopg2.OperationalError as e:
         print(f"❌  DB connection failed: {e}")
         sys.exit(1)
