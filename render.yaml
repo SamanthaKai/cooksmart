@@ -3,14 +3,25 @@ services:
     name: cooksmart-backend
     env: docker
     plan: free
-    repo: https://github.com/SamanthaKai/cooksmart
+    repo: https://github.com/SamanthaKai/CookSmart
     branch: main
     dockerfilePath: backend/Dockerfile
-    buildCommand: ''
-    startCommand: python app.py
-
-databases:
-  - name: cooksmart-db
-    plan: free
-    engine: postgres
-    version: 15
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: BASE_URL
+        sync: false

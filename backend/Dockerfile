@@ -12,4 +12,4 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "app.py"]
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2
