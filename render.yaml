@@ -6,6 +6,7 @@ services:
     repo: https://github.com/SamanthaKai/CookSmart
     branch: main
     dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     envVars:
       - key: DATABASE_URL
         sync: false
