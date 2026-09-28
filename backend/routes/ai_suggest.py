@@ -49,7 +49,7 @@ def call_llm(messages, max_tokens=600):
         if not api_key:
             raise RuntimeError('GROQ_API_KEY is not set.')
         url     = 'https://api.groq.com/openai/v1/chat/completions'
-        model   = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')
+        model   = os.getenv('GROQ_MODEL', 'qwen/qwen3.8-27b')
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',

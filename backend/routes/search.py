@@ -167,7 +167,7 @@ def _groq_semantic_filter(q, results):
         r = httpx.post(
             'https://api.groq.com/openai/v1/chat/completions',
             json={
-                'model':       os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant'),
+                'model':       os.getenv('GROQ_MODEL', 'qwen/qwen3.8-27b'),
                 'messages':    [{'role': 'user', 'content': prompt}],
                 'max_tokens':  300,
                 'temperature': 0,

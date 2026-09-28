@@ -64,7 +64,7 @@
 | `SECRET_KEY` | Signs auth tokens (change in production) |
 | `LLM_PROVIDER` | `groq` or `ollama` |
 | `GROQ_API_KEY` | Free API key from console.groq.com |
-| `GROQ_MODEL` | Default: `llama-3.1-8b-instant` |
+| `GROQ_MODEL` | Default: `qwen/qwen3.8-27b` |
 | `OLLAMA_BASE_URL` | Default: `http://localhost:11434` |
 | `OLLAMA_MODEL` | Default: `gemma3:1b` |
 

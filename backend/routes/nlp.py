@@ -56,7 +56,7 @@ def _llm_extract(text):
     if not api_key:
         return None            # signal: fall back to rule-based
 
-    model = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')
+    model = os.getenv('GROQ_MODEL', 'qwen/qwen3.8-27b')
     prompt = (
         "Extract food ingredients, herbs, drinks, or food items mentioned in the text below.\n"
         "Rules:\n"
